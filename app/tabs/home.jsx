@@ -1,0 +1,204 @@
+import { useEffect, useRef, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image, Dimensions, Animated, RefreshControl, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+var hooks = require('../../src/store/hooks');
+var listingsModule = require('../../src/store/listings');
+var useAuth = hooks.useAuth;
+var useListings = hooks.useListings;
+var t = require('../../src/theme');
+var C=t.C; var S=t.S; var R=t.R; var F=t.F;
+
+var HERO = [
+  {photo:'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=900',tag:'Coup de coeur',label:'Studio Premium - Plateau',price:'120 000 F/mois',id:'l1'},
+  {photo:'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=900',tag:'Nouveau',label:'Appartement F3 - Mermoz',price:'280 000 F/mois',id:'l3'},
+  {photo:'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=900',tag:'Exclusif',label:'Studio - Almadies',price:'180 000 F/mois',id:'l5'},
+];
+var CATS = [
+  {v:'all',l:'Tout',icon:'apps'},
+  {v:'STUDIO',l:'Studios',icon:'business'},
+  {v:'APARTMENT',l:'Appartements',icon:'home'},
+  {v:'ROOM',l:'Chambres',icon:'bed'},
+  {v:'COLOCATION',l:'Colocs',icon:'people'},
+];
+var MINI = [
+  'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400',
+  'https://images.unsplash.com/photo-1484154218962-a197022b5858?w=400',
+  'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=400',
+  'https://images.unsplash.com/photo-1536376072261-38c75010e6c9?w=400',
+];
+var TYPE_LABEL = {STUDIO:'Studio',APARTMENT:'Appartement',ROOM:'Chambre',COLOCATION:'Colocation'};
+var TYPE_GRAD = {STUDIO:['#1B4F3A','#2D7A5F'],APARTMENT:['#1A2E4A','#243D61'],ROOM:['#4B0082','#7B2FBE'],COLOCATION:['#7A1B1B','#DC2626']};
+function fmt(p) { return new Intl.NumberFormat('fr-SN').format(p); }
+
+export default function Home() {
+  var auth = useAuth(); var user = auth.user;
+  var store = useListings(); var items = store.items;
+  var heroS = useState(0); var heroIdx = heroS[0]; var setHeroIdx = heroS[1];
+  var catS = useState('all'); var cat = catS[0]; var setCat = catS[1];
+  var refS = useState(false); var refreshing = refS[0]; var setRefreshing = refS[1];
+  var fade = useRef(new Animated.Value(1)).current;
+
+  useEffect(function() { listingsModule.listingsStore.fetch(); }, []);
+  useEffect(function() {
+    var timer = setInterval(function() {
+      Animated.timing(fade,{toValue:0,duration:300,useNativeDriver:true}).start(function() {
+        setHeroIdx(function(i){return (i+1)%HERO.length;});
+        Animated.timing(fade,{toValue:1,duration:400,useNativeDriver:true}).start();
+      });
+    },4500);
+    return function(){clearInterval(timer);};
+  },[]);
+
+  var h = new Date().getHours();
+  var greet = h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir';
+  var hero = HERO[heroIdx];
+
+  function onRefresh() {
+    setRefreshing(true);
+    listingsModule.listingsStore.fetch().then(function(){setRefreshing(false);});
+  }
+
+  return (
+    <View style={{flex:1,backgroundColor:C.bg}}>
+      <LinearGradient colors={['#1A0800','#3A1800','#C8791A']} style={{paddingHorizontal:S.xl,paddingBottom:S.xl2}}>
+        <SafeAreaView edges={['top']}>
+          <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'flex-start',marginBottom:S.lg}}>
+            <View>
+              <Text style={{fontSize:F.sm,color:'rgba(255,255,255,0.65)',marginBottom:3}}>{greet}, {user?user.firstName:''} 👋</Text>
+              <Text style={{fontSize:22,fontWeight:'900',color:'#fff',lineHeight:30,letterSpacing:-0.5}}>Trouvez votre{'\n'}logement idéal</Text>
+            </View>
+            <TouchableOpacity style={{width:42,height:42,borderRadius:21,backgroundColor:'rgba(255,255,255,0.12)',alignItems:'center',justifyContent:'center'}} onPress={function(){router.push('/notifications');}}>
+              <Ionicons name="notifications" size={22} color="#fff" />
+              <View style={{position:'absolute',top:8,right:8,width:9,height:9,borderRadius:5,backgroundColor:C.danger,borderWidth:1.5,borderColor:'rgba(255,255,255,0.8)'}} />
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity style={{flexDirection:'row',alignItems:'center',backgroundColor:'#fff',borderRadius:R.xl,paddingVertical:S.sm,paddingLeft:S.md,paddingRight:S.sm,gap:S.sm,elevation:6}} onPress={function(){router.push('/tabs/search');}} activeOpacity={0.9}>
+            <Ionicons name="search" size={18} color={C.muted} />
+            <Text style={{flex:1,fontSize:F.sm,color:C.gray}}>Quartier, ville, type...</Text>
+            <View style={{width:36,height:36,backgroundColor:C.primaryLt,borderRadius:18,alignItems:'center',justifyContent:'center'}}>
+              <Ionicons name="options" size={15} color={C.primary} />
+            </View>
+          </TouchableOpacity>
+        </SafeAreaView>
+      </LinearGradient>
+
+      <ScrollView showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[C.primary]} />}>
+        <View style={{height:220,position:'relative',marginHorizontal:S.lg,marginTop:S.lg,borderRadius:R.xl2,overflow:'hidden',elevation:14}}>
+          <Animated.Image source={{uri:hero.photo}} style={{width:'100%',height:'100%',opacity:fade}} resizeMode="cover" />
+          <LinearGradient colors={['transparent','rgba(0,0,0,0.75)']} style={StyleSheet.absoluteFillObject} />
+          <View style={{position:'absolute',bottom:S.lg,left:S.lg,right:90}}>
+            <View style={{alignSelf:'flex-start',borderRadius:R.sm,paddingHorizontal:10,paddingVertical:4,marginBottom:S.sm,backgroundColor:C.primary}}>
+              <Text style={{fontSize:F.xs,fontWeight:'800',color:'#fff',letterSpacing:1}}>{hero.tag}</Text>
+            </View>
+            <Text style={{fontSize:F.md,fontWeight:'700',color:'#fff',marginBottom:3}}>{hero.label}</Text>
+            <Text style={{fontSize:F.xl,fontWeight:'900',color:C.primary}}>{hero.price}</Text>
+          </View>
+          <TouchableOpacity style={{position:'absolute',bottom:S.lg,right:S.md,backgroundColor:'rgba(255,255,255,0.15)',borderRadius:R.lg,paddingHorizontal:S.md,paddingVertical:8,borderWidth:1,borderColor:'rgba(255,255,255,0.25)'}} onPress={function(){router.push('/listing/'+hero.id);}}>
+            <Text style={{fontSize:F.sm,fontWeight:'700',color:'#fff'}}>Voir →</Text>
+          </TouchableOpacity>
+          <View style={{position:'absolute',top:S.md,right:S.md,flexDirection:'row',gap:5}}>
+            {HERO.map(function(_,i){return <View key={i} style={{width:i===heroIdx?18:6,height:6,borderRadius:3,backgroundColor:i===heroIdx?C.primary:'rgba(255,255,255,0.3)'}} />;} )}
+          </View>
+        </View>
+
+        <View style={{flexDirection:'row',gap:5,paddingHorizontal:S.lg,marginTop:S.md,height:80}}>
+          {MINI.map(function(uri,i){
+            return (
+              <View key={i} style={{flex:1,borderRadius:R.lg,overflow:'hidden',backgroundColor:C.border}}>
+                <Image source={{uri:uri}} style={{width:'100%',height:'100%'}} resizeMode="cover" />
+                <LinearGradient colors={['transparent','rgba(0,0,0,0.4)']} style={StyleSheet.absoluteFillObject} />
+              </View>
+            );
+          })}
+        </View>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{backgroundColor:'#fff',borderBottomWidth:0.5,borderBottomColor:C.border,marginTop:S.sm}} contentContainerStyle={{gap:8,paddingHorizontal:S.lg,paddingVertical:S.md}}>
+          {CATS.map(function(c){
+            return (
+              <TouchableOpacity key={c.v} style={{flexDirection:'row',alignItems:'center',gap:5,paddingHorizontal:S.md,paddingVertical:8,borderRadius:R.full,borderWidth:1,borderColor:cat===c.v?C.primary:C.border,backgroundColor:cat===c.v?C.primary:'#fff'}}
+                onPress={function(){setCat(c.v);listingsModule.listingsStore.fetch(c.v==='all'?undefined:c.v);}} activeOpacity={0.8}>
+                <Ionicons name={c.icon} size={13} color={cat===c.v?'#fff':C.primary} />
+                <Text style={{fontSize:F.sm,fontWeight:'600',color:cat===c.v?'#fff':C.textMd}}>{c.l}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        <View style={{paddingHorizontal:S.lg}}>
+          <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:S.md,marginTop:S.lg}}>
+            <Text style={{fontSize:F.lg,fontWeight:'800',color:C.text,letterSpacing:-0.2}}>Annonces récentes</Text>
+            <TouchableOpacity onPress={function(){router.push('/tabs/search');}}>
+              <Text style={{fontSize:F.sm,color:C.primary,fontWeight:'700'}}>Voir tout →</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity style={{flexDirection:'row',alignItems:'center',gap:S.md,backgroundColor:C.primaryLt,borderRadius:R.lg,padding:S.md,marginBottom:S.lg,borderWidth:0.5,borderColor:'rgba(212,130,26,0.2)'}} activeOpacity={0.88}>
+            <Ionicons name="shield-checkmark" size={20} color={C.primary} />
+            <View style={{flex:1}}>
+              <Text style={{fontSize:F.sm,fontWeight:'700',color:C.primary}}>Annonces vérifiées Deukway</Text>
+              <Text style={{fontSize:F.xs,color:C.gold}}>Propriétaires et biens contrôlés</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={C.primary} />
+          </TouchableOpacity>
+
+          {items.map(function(l){
+            var grad = TYPE_GRAD[l.type]||['#333','#555'];
+            return (
+              <TouchableOpacity key={l.id} style={{backgroundColor:'#fff',borderRadius:R.xl2,marginBottom:S.lg,overflow:'hidden',elevation:6}} onPress={function(){router.push('/listing/'+l.id);}} activeOpacity={0.92}>
+                <View style={{height:190,position:'relative'}}>
+                  {l.media&&l.media[0]
+                    ?<Image source={{uri:l.media[0].url}} style={{width:'100%',height:'100%'}} resizeMode="cover" />
+                    :<LinearGradient colors={grad} style={{flex:1}} />}
+                  <LinearGradient colors={['transparent','rgba(0,0,0,0.6)']} style={StyleSheet.absoluteFillObject} />
+                  <LinearGradient colors={grad} style={{position:'absolute',top:S.md,left:S.md,borderRadius:R.sm,paddingHorizontal:10,paddingVertical:4}} start={{x:0,y:0}} end={{x:1,y:0}}>
+                    <Text style={{fontSize:F.xs,fontWeight:'800',color:'#fff',letterSpacing:0.5}}>{TYPE_LABEL[l.type]}</Text>
+                  </LinearGradient>
+                  {l.isVerified&&(
+                    <View style={{position:'absolute',top:S.md,right:50,flexDirection:'row',alignItems:'center',backgroundColor:'rgba(201,150,58,0.9)',borderRadius:R.sm,paddingHorizontal:8,paddingVertical:3}}>
+                      <Ionicons name="shield-checkmark" size={10} color="#fff" />
+                      <Text style={{fontSize:F.xs,fontWeight:'700',color:'#fff'}}> Vérifié</Text>
+                    </View>
+                  )}
+                  <TouchableOpacity style={{position:'absolute',top:S.sm,right:S.md,width:38,height:38,borderRadius:19,backgroundColor:'rgba(0,0,0,0.3)',alignItems:'center',justifyContent:'center'}} onPress={function(){listingsModule.listingsStore.toggleFav(l.id);}}>
+                    <Ionicons name={l.isFavorite?'heart':'heart-outline'} size={20} color={l.isFavorite?'#FF4040':'rgba(255,255,255,0.85)'} />
+                  </TouchableOpacity>
+                  <View style={{position:'absolute',bottom:S.md,left:S.md}}>
+                    <Text style={{fontSize:F.xl,fontWeight:'900',color:'#fff'}}>{fmt(l.price)}<Text style={{fontSize:F.sm,fontWeight:'400'}}> F/mois</Text></Text>
+                  </View>
+                </View>
+                <View style={{padding:S.md}}>
+                  <Text style={{fontSize:F.md,fontWeight:'800',color:C.text,marginBottom:4}} numberOfLines={1}>{l.title}</Text>
+                  <View style={{flexDirection:'row',alignItems:'center',gap:4,marginBottom:S.sm}}>
+                    <Ionicons name="location" size={12} color={C.primary} />
+                    <Text style={{fontSize:F.sm,color:C.muted,flex:1}}>{l.neighborhood}, {l.city}</Text>
+                  </View>
+                  <View style={{flexDirection:'row',flexWrap:'wrap',gap:6,marginBottom:S.sm}}>
+                    {l.isFurnished&&<View style={{backgroundColor:C.primaryLt,borderRadius:R.full,paddingHorizontal:9,paddingVertical:4}}><Text style={{fontSize:F.xs,fontWeight:'700',color:C.primary}}>Meublé</Text></View>}
+                    {l.hasWifi&&<View style={{backgroundColor:C.primaryLt,borderRadius:R.full,paddingHorizontal:9,paddingVertical:4}}><Text style={{fontSize:F.xs,fontWeight:'700',color:C.primary}}>Wifi</Text></View>}
+                    {l.hasAC&&<View style={{backgroundColor:C.primaryLt,borderRadius:R.full,paddingHorizontal:9,paddingVertical:4}}><Text style={{fontSize:F.xs,fontWeight:'700',color:C.primary}}>Climatisé</Text></View>}
+                  </View>
+                  <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingTop:S.sm,borderTopWidth:0.5,borderTopColor:C.border}}>
+                    <View style={{flexDirection:'row',alignItems:'center',gap:S.sm}}>
+                      <LinearGradient colors={['#F0A830','#D4821A']} style={{width:26,height:26,borderRadius:13,alignItems:'center',justifyContent:'center'}}>
+                        <Text style={{fontSize:10,fontWeight:'800',color:'#fff'}}>{l.owner.firstName[0]}{l.owner.lastName[0]}</Text>
+                      </LinearGradient>
+                      <Text style={{fontSize:F.xs,fontWeight:'600',color:C.muted}}>{l.owner.firstName} {l.owner.lastName}</Text>
+                    </View>
+                    <View style={{flexDirection:'row',alignItems:'center',gap:3}}>
+                      <Ionicons name="eye" size={12} color={C.gray} />
+                      <Text style={{fontSize:F.xs,color:C.gray}}>{l.viewCount}</Text>
+                    </View>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+          <View style={{height:20}} />
+        </View>
+      </ScrollView>
+    </View>
+  );
+}

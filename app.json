@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "Deukway",
+    "slug": "deukway",
+    "version": "1.0.0",
+    "scheme": "deukway",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0D0D0D"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "sn.deukway.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0D0D0D"
+      },
+      "package": "sn.deukway.app"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Deukway accède à vos photos.",
+          "cameraPermission": "Deukway utilise la caméra."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": { "origin": false },
+      "eas": { "projectId": "464bd9e2-a81f-4554-84f3-18ceb455d9ac" }
+    }
+  }
+}
