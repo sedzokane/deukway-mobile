@@ -16,27 +16,28 @@ export default function Login() {
   var showS = useState(false); var show = showS[0]; var setShow = showS[1];
 
   function submit() {
+    if (!phone) { Alert.alert('Requis','Entrez votre numéro de téléphone'); return; }
     authModule.authStore.login(phone, pw).catch(function() {
-      Alert.alert('Erreur','Identifiants incorrects');
+      Alert.alert('Erreur','Une erreur est survenue');
     });
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex:1 }} behavior={Platform.OS==='ios'?'padding':'height'}>
-      <View style={{ flex:1, backgroundColor:'#000' }}>
+    <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==='ios'?'padding':'height'}>
+      <View style={{flex:1,backgroundColor:'#000'}}>
         <LinearGradient colors={['#1A0800','#3A1800','#D4821A']} style={StyleSheet.absoluteFillObject} />
-        <SafeAreaView style={{ flex:1 }}>
-          <ScrollView contentContainerStyle={{ paddingHorizontal:S.xl, paddingBottom:40 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-            <TouchableOpacity onPress={function() { router.back(); }} style={{ paddingTop:S.sm, marginBottom:S.xl }}>
-              <Text style={{ color:'rgba(255,255,255,0.8)', fontSize:F.md, fontWeight:'600' }}>‹  Retour</Text>
+        <SafeAreaView style={{flex:1}}>
+          <ScrollView contentContainerStyle={{paddingHorizontal:S.xl,paddingBottom:40}} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <TouchableOpacity onPress={function(){router.back();}} style={{paddingTop:S.sm,marginBottom:S.xl}}>
+              <Text style={{color:'rgba(255,255,255,0.8)',fontSize:F.md,fontWeight:'600'}}>‹  Retour</Text>
             </TouchableOpacity>
-            <Text style={{ fontSize:34, fontWeight:'900', color:'#fff', marginBottom:S.sm }}>Bon retour 👋</Text>
-            <Text style={{ fontSize:F.base, color:'rgba(255,255,255,0.6)', marginBottom:S.xl2 }}>Connectez-vous à votre espace Deukway</Text>
-            <View style={{ backgroundColor:'#fff', borderRadius:R.xl2, padding:S.xl, elevation:16 }}>
+            <Text style={{fontSize:34,fontWeight:'900',color:'#fff',marginBottom:S.sm}}>Bon retour 👋</Text>
+            <Text style={{fontSize:F.base,color:'rgba(255,255,255,0.6)',marginBottom:S.xl2}}>Connectez-vous à votre espace Deukway</Text>
+            <View style={{backgroundColor:'#fff',borderRadius:R.xl2,padding:S.xl,elevation:16}}>
               <Text style={st.label}>Téléphone</Text>
               <TextInput style={st.input} placeholder="+221 77 000 0000" placeholderTextColor={C.gray} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
               <Text style={st.label}>Mot de passe</Text>
-              <View style={{ flexDirection:'row', alignItems:'center', backgroundColor:C.bg, borderRadius:R.lg, borderWidth:1, borderColor:C.border }}>
+              <View style={{flexDirection:'row',alignItems:'center',backgroundColor:C.bg,borderRadius:R.lg,borderWidth:1,borderColor:C.border}}>
                 <TextInput style={[st.input,{flex:1,borderWidth:0}]} placeholder="Mot de passe" placeholderTextColor={C.gray} value={pw} onChangeText={setPw} secureTextEntry={!show} />
                 <TouchableOpacity onPress={function(){setShow(function(v){return !v;});}} style={{padding:S.sm}}>
                   <Text style={{fontSize:16}}>{show?'🙈':'👁️'}</Text>
@@ -50,20 +51,12 @@ export default function Login() {
                   <Text style={{fontSize:F.md,fontWeight:'800',color:'#fff'}}>{auth.isLoading?'Connexion...':'Se connecter  →'}</Text>
                 </LinearGradient>
               </TouchableOpacity>
-              <View style={{flexDirection:'row',alignItems:'center',gap:S.md,marginVertical:S.xl}}>
-                <View style={{flex:1,height:0.5,backgroundColor:C.border}} />
-                <Text style={{fontSize:F.sm,color:C.muted}}>ou</Text>
-                <View style={{flex:1,height:0.5,backgroundColor:C.border}} />
-              </View>
-              <TouchableOpacity style={{paddingVertical:14,alignItems:'center',borderRadius:R.xl,borderWidth:1.5,borderColor:C.border,backgroundColor:C.bg}} onPress={function(){router.push({pathname:'/auth/otp',params:{phone:''}});}}>
-                <Text style={{fontSize:F.base,fontWeight:'700',color:C.textMd}}>Connexion par code OTP</Text>
-              </TouchableOpacity>
             </View>
             <TouchableOpacity onPress={function(){router.push('/auth/register');}} style={{alignItems:'center',marginTop:S.xl}}>
               <Text style={{color:'rgba(255,255,255,0.7)',fontSize:F.sm}}>Pas de compte ? <Text style={{color:C.primary,fontWeight:'800'}}>Créer un compte</Text></Text>
             </TouchableOpacity>
             <View style={{marginTop:S.xl,backgroundColor:'rgba(255,255,255,0.08)',borderRadius:R.lg,padding:S.md}}>
-              <Text style={{fontSize:F.xs,color:'rgba(255,255,255,0.6)',textAlign:'center'}}>Demo: N importe quel login fonctionne</Text>
+              <Text style={{fontSize:F.xs,color:'rgba(255,255,255,0.6)',textAlign:'center'}}>Mode demo — N importe quel login fonctionne</Text>
               <Text style={{fontSize:F.xs,color:'rgba(255,255,255,0.6)',textAlign:'center',marginTop:3}}>Téléphone finissant par 0 = Propriétaire</Text>
             </View>
           </ScrollView>

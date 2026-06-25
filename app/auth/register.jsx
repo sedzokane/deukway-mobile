@@ -21,10 +21,10 @@ export default function Register() {
   var grad = isOwner?['#0F2E22','#1B4F3A','#2D7A5F']:['#1A0800','#3A1800','#D4821A'];
 
   function submit() {
-    if(!fn||!ph) { Alert.alert('Requis','Prénom et téléphone obligatoires'); return; }
-    authModule.authStore.register({firstName:fn,lastName:ln,phone:ph,password:pw,role:role}).then(function() {
-      router.push({pathname:'/auth/otp',params:{phone:ph}});
-    }).catch(function() { Alert.alert('Erreur','Une erreur est survenue'); });
+    if (!fn||!ph) { Alert.alert('Requis','Prénom et téléphone obligatoires'); return; }
+    authModule.authStore.login(ph, pw).catch(function() {
+      Alert.alert('Erreur','Une erreur est survenue');
+    });
   }
 
   return (
@@ -78,6 +78,9 @@ export default function Register() {
             <TouchableOpacity onPress={function(){router.push('/auth/login');}} style={{alignItems:'center',paddingVertical:S.xl}}>
               <Text style={{color:C.muted,fontSize:F.sm}}>Déjà un compte ? <Text style={{color:color,fontWeight:'800'}}>Se connecter</Text></Text>
             </TouchableOpacity>
+            <View style={{backgroundColor:'rgba(0,0,0,0.05)',borderRadius:R.lg,padding:S.md}}>
+              <Text style={{fontSize:F.xs,color:C.muted,textAlign:'center'}}>Mode demo — Téléphone finissant par 0 = Propriétaire</Text>
+            </View>
           </View>
         </ScrollView>
       </SafeAreaView>
