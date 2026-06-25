@@ -3,23 +3,29 @@ var authModule = require('./auth');
 var listingsModule = require('./listings');
 
 function useAuth() {
-  var s = React.useState(authModule.authStore.getState());
-  var setState = s[1];
+  var forceUpdate = React.useState(0)[1];
+
   React.useEffect(function() {
-    setState(authModule.authStore.getState());
-    return authModule.authStore.subscribe(function(ns) { setState(Object.assign({},ns)); });
+    forceUpdate(function(n) { return n + 1; });
+    return authModule.authStore.subscribe(function() {
+      forceUpdate(function(n) { return n + 1; });
+    });
   }, []);
-  return s[0];
+
+  return authModule.authStore.getState();
 }
 
 function useListings() {
-  var s = React.useState(listingsModule.listingsStore.getState());
-  var setState = s[1];
+  var forceUpdate = React.useState(0)[1];
+
   React.useEffect(function() {
-    setState(listingsModule.listingsStore.getState());
-    return listingsModule.listingsStore.subscribe(function(ns) { setState(Object.assign({},ns)); });
+    forceUpdate(function(n) { return n + 1; });
+    return listingsModule.listingsStore.subscribe(function() {
+      forceUpdate(function(n) { return n + 1; });
+    });
   }, []);
-  return s[0];
+
+  return listingsModule.listingsStore.getState();
 }
 
-module.exports = { useAuth:useAuth, useListings:useListings };
+module.exports = { useAuth: useAuth, useListings: useListings };
