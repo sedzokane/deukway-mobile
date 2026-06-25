@@ -5,21 +5,11 @@
     "version": "1.0.0",
     "scheme": "deukway",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0D0D0D"
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "sn.deukway.app"
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0D0D0D"
-      },
       "package": "sn.deukway.app"
     },
     "plugins": [
