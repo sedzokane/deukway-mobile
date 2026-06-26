@@ -1,7 +1,8 @@
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Toast from 'react-native-toast-message';
 var hooks = require('../../src/store/hooks');
 var authModule = require('../../src/store/auth');
 var useAuth = hooks.useAuth;
@@ -19,10 +20,15 @@ export default function Profile() {
   var user = auth.user;
 
   function handleLogout() {
-    Alert.alert('Déconnexion','Voulez-vous vous déconnecter ?',[
-      {text:'Annuler',style:'cancel'},
-      {text:'Déconnecter',style:'destructive',onPress:function(){authModule.authStore.logout();}},
-    ]);
+    Toast.show({
+      type: 'error',
+      text1: 'Déconnexion',
+      text2: 'Vous avez été déconnecté avec succès',
+      visibilityTime: 2000,
+      onHide: function() {
+        authModule.authStore.logout();
+      }
+    });
   }
 
   return (
@@ -41,6 +47,7 @@ export default function Profile() {
             </View>
           </SafeAreaView>
         </LinearGradient>
+
         <View style={{flexDirection:'row',backgroundColor:'#fff',borderBottomWidth:0.5,borderBottomColor:C.border}}>
           {[['3','Favoris'],['2','Visites'],['0','Contrats']].map(function(item,i) {
             return (
@@ -51,6 +58,7 @@ export default function Profile() {
             );
           })}
         </View>
+
         <View style={{padding:S.lg,gap:S.lg}}>
           {MENU.map(function(section) {
             return (
@@ -72,6 +80,7 @@ export default function Profile() {
               </View>
             );
           })}
+
           <TouchableOpacity style={{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:S.md,backgroundColor:'#FFF0F0',borderRadius:R.xl,padding:S.lg,borderWidth:0.5,borderColor:'#DC262633'}} onPress={handleLogout} activeOpacity={0.85}>
             <Ionicons name="log-out-outline" size={20} color="#DC2626" />
             <Text style={{fontSize:F.base,fontWeight:'700',color:'#DC2626'}}>Se déconnecter</Text>

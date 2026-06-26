@@ -4,8 +4,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import Toast from 'react-native-toast-message';
 var hooks = require('../../src/store/hooks');
 var listingsModule = require('../../src/store/listings');
+var authModule = require('../../src/store/auth');
 var useAuth = hooks.useAuth;
 var useListings = hooks.useListings;
 var t = require('../../src/theme');
@@ -18,6 +20,7 @@ var STATS = [
   {icon:'chatbubble',label:'Messages',val:'12',color:'#1A2E4A',bg:'#EBF0F7'},
   {icon:'eye',label:'Vues',val:'432',color:'#C9963A',bg:'#FBF4DF'},
 ];
+
 var QUICK = [
   {icon:'add-circle',label:'Publier',sub:'Nouvelle annonce',grad:['#243D61','#1A2E4A']},
   {icon:'stats-chart',label:'Stats',sub:'Performance',grad:['#0A8754','#065C39']},
@@ -25,10 +28,22 @@ var QUICK = [
   {icon:'chatbubbles',label:'Messages',sub:'Inbox',grad:['#1A56DB','#1040AA']},
 ];
 
+function fmt(p) { return new Intl.NumberFormat('fr-SN').format(p); }
+
 export default function Dashboard() {
   var auth = useAuth(); var user = auth.user;
   var store = useListings(); var items = store.items;
-  useEffect(function(){listingsModule.listingsStore.fetch();}, []);
+  useEffect(function(){ listingsModule.listingsStore.fetch(); }, []);
+
+  function handleLogout() {
+    Toast.show({
+      type: 'error',
+      text1: 'Déconnexion',
+      text2: 'Vous avez été déconnecté avec succès',
+      visibilityTime: 2000,
+      onHide: function() { authModule.authStore.logout(); }
+    });
+  }
 
   return (
     <View style={{flex:1,backgroundColor:C.bg}}>
@@ -43,10 +58,15 @@ export default function Dashboard() {
                 </View>
                 <Text style={{fontSize:22,fontWeight:'900',color:'#fff',lineHeight:30}}>Bonjour,{'\n'}{user?user.firstName:''} 👋</Text>
               </View>
-              <TouchableOpacity style={{width:42,height:42,borderRadius:21,backgroundColor:'rgba(255,255,255,0.12)',alignItems:'center',justifyContent:'center'}} onPress={function(){router.push('/notifications');}}>
-                <Ionicons name="notifications" size={22} color="#fff" />
-                <View style={{position:'absolute',top:8,right:8,width:9,height:9,borderRadius:5,backgroundColor:C.primary,borderWidth:1.5,borderColor:'rgba(255,255,255,0.8)'}} />
-              </TouchableOpacity>
+              <View style={{flexDirection:'row',gap:S.sm}}>
+                <TouchableOpacity style={{width:42,height:42,borderRadius:21,backgroundColor:'rgba(255,255,255,0.12)',alignItems:'center',justifyContent:'center'}} onPress={function(){router.push('/notifications');}}>
+                  <Ionicons name="notifications" size={22} color="#fff" />
+                  <View style={{position:'absolute',top:8,right:8,width:9,height:9,borderRadius:5,backgroundColor:C.primary,borderWidth:1.5,borderColor:'rgba(255,255,255,0.8)'}} />
+                </TouchableOpacity>
+                <TouchableOpacity style={{width:42,height:42,borderRadius:21,backgroundColor:'rgba(255,255,255,0.12)',alignItems:'center',justifyContent:'center'}} onPress={handleLogout}>
+                  <Ionicons name="log-out-outline" size={22} color="#fff" />
+                </TouchableOpacity>
+              </View>
             </View>
             <View style={{flexDirection:'row',gap:S.sm}}>
               {QUICK.map(function(q,i){
@@ -92,7 +112,7 @@ export default function Dashboard() {
                     <Ionicons name="location" size={11} color={C.muted} />
                     <Text style={{fontSize:F.xs,color:C.muted}}>{l.neighborhood}</Text>
                   </View>
-                  <Text style={{fontSize:F.md,fontWeight:'700',color:C.primary,marginTop:4}}>{new Intl.NumberFormat('fr-SN').format(l.price)} F/mois</Text>
+                  <Text style={{fontSize:F.md,fontWeight:'700',color:C.primary,marginTop:4}}>{fmt(l.price)} F/mois</Text>
                 </View>
                 <View style={{alignItems:'flex-end',gap:6}}>
                   <View style={{borderRadius:R.full,paddingHorizontal:10,paddingVertical:4,backgroundColor:'#05996922'}}>
