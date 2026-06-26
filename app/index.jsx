@@ -2,18 +2,19 @@ import { Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 var authModule = require('../src/store/auth');
-var hooks = require('../src/store/hooks');
-var useAuth = hooks.useAuth;
 
 export default function Index() {
-  var auth = useAuth();
-  var readyS = useState(false);
-  var ready = readyS[0];
-  var setReady = readyS[1];
+  var countS = useState(0); var setCount = countS[1];
+  var readyS = useState(false); var ready = readyS[0]; var setReady = readyS[1];
 
   useEffect(function() {
     authModule.authStore.load().finally(function() { setReady(true); });
+    return authModule.authStore.subscribe(function() {
+      setCount(function(n) { return n + 1; });
+    });
   }, []);
+
+  var auth = authModule.authStore.getState();
 
   if (!ready) {
     return (
