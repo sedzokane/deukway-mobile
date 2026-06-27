@@ -80,18 +80,14 @@ export default function ListingDetail() {
     });
   }
 
-  function openMaps() {
-    if (l.latitude && l.longitude) {
-      var url = Platform.OS === 'ios'
-        ? 'maps://?q='+l.latitude+','+l.longitude
-        : 'geo:'+l.latitude+','+l.longitude+'?q='+l.latitude+','+l.longitude;
-      Linking.openURL(url).catch(function() {
-        Linking.openURL('https://www.google.com/maps?q='+l.latitude+','+l.longitude);
-      });
-    } else {
-      Linking.openURL('https://www.google.com/maps/search/'+encodeURIComponent(l.neighborhood+', '+l.city+', Senegal'));
-    }
+ function openMaps() {
+  var query = encodeURIComponent((l.address||l.neighborhood)+', '+l.city+', Senegal');
+  if (l.latitude && l.longitude) {
+    Linking.openURL('https://www.google.com/maps?q='+l.latitude+','+l.longitude);
+  } else {
+    Linking.openURL('https://www.google.com/maps/search/'+query);
   }
+}
 
   return (
     <View style={{flex:1,backgroundColor:'#fff'}}>

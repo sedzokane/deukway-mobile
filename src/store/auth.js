@@ -46,6 +46,14 @@ var authStore = {
     }).catch(function() {});
   },
 
+  setUser: function(user) {
+    return AsyncStorage.setItem('dkw_user', JSON.stringify(user)).then(function() {
+      setState({ user: user });
+    }).catch(function() {
+      setState({ user: user });
+    });
+  },
+
   login: function(phone, password) {
     setState({ isLoading: true });
     return api.post('/auth/login', { phone: phone, password: password })

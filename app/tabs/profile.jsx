@@ -2,6 +2,7 @@ import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 var hooks = require('../../src/store/hooks');
 var authModule = require('../../src/store/auth');
@@ -10,9 +11,22 @@ var t = require('../../src/theme');
 var C=t.C; var S=t.S; var R=t.R; var F=t.F;
 
 var MENU = [
-  {section:'Mon compte',items:[{icon:'person-outline',label:'Informations personnelles'},{icon:'notifications-outline',label:'Notifications'},{icon:'shield-checkmark-outline',label:'Securite'}]},
-  {section:'Activite',items:[{icon:'heart-outline',label:'Mes favoris'},{icon:'document-text-outline',label:'Mes contrats'},{icon:'card-outline',label:'Paiements'}]},
-  {section:'Support',items:[{icon:'help-circle-outline',label:'Aide & FAQ'},{icon:'chatbubble-outline',label:'Nous contacter'},{icon:'star-outline',label:'Noter l application'}]},
+  {section:'Mon compte',items:[
+    {icon:'person-outline',label:'Informations personnelles',route:'/profile/edit'},
+    {icon:'notifications-outline',label:'Notifications',route:'/notifications'},
+    {icon:'shield-checkmark-outline',label:'Securite',route:null},
+  ]},
+  {section:'Activite',items:[
+    {icon:'heart-outline',label:'Mes favoris',route:'/favorites'},
+    {icon:'calendar-outline',label:'Mes visites',route:'/tabs/visits'},
+    {icon:'document-text-outline',label:'Mes contrats',route:null},
+    {icon:'card-outline',label:'Paiements',route:null},
+  ]},
+  {section:'Support',items:[
+    {icon:'help-circle-outline',label:'Aide & FAQ',route:null},
+    {icon:'chatbubble-outline',label:'Nous contacter',route:null},
+    {icon:'star-outline',label:'Noter l application',route:null},
+  ]},
 ];
 
 export default function Profile() {
@@ -29,33 +43,49 @@ export default function Profile() {
     });
   }
 
+  function handleMenuPress(item) {
+    if (item.route) {
+      router.push(item.route);
+    } else {
+      Toast.show({ type:'info', text1:item.label, text2:'Bientot disponible', visibilityTime:1500 });
+    }
+  }
+
   return (
     <View style={{flex:1,backgroundColor:C.bg}}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <LinearGradient colors={['#1A0800','#3A1800','#C8791A']} style={{paddingHorizontal:S.xl,paddingBottom:S.xl2,alignItems:'center'}}>
           <SafeAreaView edges={['top']} style={{alignItems:'center',width:'100%'}}>
-            {user&&user.avatar
-              ? <Image source={{uri:user.avatar}} style={{width:80,height:80,borderRadius:40,borderWidth:3,borderColor:'rgba(255,255,255,0.3)',marginBottom:S.md,marginTop:S.sm}} />
-              : <LinearGradient colors={['#F0A830','#D4821A']} style={{width:80,height:80,borderRadius:40,alignItems:'center',justifyContent:'center',borderWidth:3,borderColor:'rgba(255,255,255,0.3)',marginBottom:S.md,marginTop:S.sm}}>
-                  <Text style={{fontSize:26,fontWeight:'900',color:'#fff'}}>{user?user.firstName[0]:''}{user?user.lastName[0]:''}</Text>
-                </LinearGradient>
-            }
+            <TouchableOpacity onPress={function(){router.push('/profile/edit');}}>
+              {user&&user.avatar
+                ? <Image source={{uri:user.avatar}} style={{width:80,height:80,borderRadius:40,borderWidth:3,borderColor:'rgba(255,255,255,0.3)',marginBottom:S.md,marginTop:S.sm}} />
+                : <LinearGradient colors={['#F0A830','#D4821A']} style={{width:80,height:80,borderRadius:40,alignItems:'center',justifyContent:'center',borderWidth:3,borderColor:'rgba(255,255,255,0.3)',marginBottom:S.md,marginTop:S.sm}}>
+                    <Text style={{fontSize:26,fontWeight:'900',color:'#fff'}}>{user?user.firstName[0]:''}{user?user.lastName[0]:''}</Text>
+                  </LinearGradient>
+              }
+            </TouchableOpacity>
             <Text style={{fontSize:20,fontWeight:'900',color:'#fff'}}>{user?user.firstName:''} {user?user.lastName:''}</Text>
             <Text style={{fontSize:F.sm,color:'rgba(255,255,255,0.65)',marginTop:3}}>{user?user.phone:''}</Text>
-            <View style={{flexDirection:'row',alignItems:'center',gap:5,marginTop:S.sm,backgroundColor:'rgba(255,255,255,0.1)',borderRadius:R.full,paddingHorizontal:S.md,paddingVertical:5}}>
-              <Ionicons name="shield-checkmark" size={13} color={C.gold} />
-              <Text style={{fontSize:F.xs,fontWeight:'700',color:C.gold}}>Compte verifie</Text>
-            </View>
+            {user&&user.isVerified&&(
+              <View style={{flexDirection:'row',alignItems:'center',gap:5,marginTop:S.sm,backgroundColor:'rgba(255,255,255,0.1)',borderRadius:R.full,paddingHorizontal:S.md,paddingVertical:5}}>
+                <Ionicons name="shield-checkmark" size={13} color={C.gold} />
+                <Text style={{fontSize:F.xs,fontWeight:'700',color:C.gold}}>Compte verifie</Text>
+              </View>
+            )}
           </SafeAreaView>
         </LinearGradient>
 
         <View style={{flexDirection:'row',backgroundColor:'#fff',borderBottomWidth:0.5,borderBottomColor:C.border}}>
-          {[['3','Favoris'],['2','Visites'],['0','Contrats']].map(function(item,i) {
+          {[
+            {val:'❤️',label:'Favoris',route:'/favorites'},
+            {val:'📅',label:'Visites',route:'/tabs/visits'},
+            {val:'💬',label:'Messages',route:'/chat'},
+          ].map(function(item,i) {
             return (
-              <View key={i} style={{flex:1,alignItems:'center',paddingVertical:S.lg,borderRightWidth:i<2?0.5:0,borderRightColor:C.border}}>
-                <Text style={{fontSize:20,fontWeight:'900',color:C.primary}}>{item[0]}</Text>
-                <Text style={{fontSize:F.xs,color:C.muted,marginTop:2}}>{item[1]}</Text>
-              </View>
+              <TouchableOpacity key={i} onPress={function(){router.push(item.route);}} style={{flex:1,alignItems:'center',paddingVertical:S.lg,borderRightWidth:i<2?0.5:0,borderRightColor:C.border}} activeOpacity={0.7}>
+                <Text style={{fontSize:20}}>{item.val}</Text>
+                <Text style={{fontSize:F.xs,color:C.muted,marginTop:2}}>{item.label}</Text>
+              </TouchableOpacity>
             );
           })}
         </View>
@@ -68,12 +98,12 @@ export default function Profile() {
                 <View style={{backgroundColor:'#fff',borderRadius:R.xl,overflow:'hidden',elevation:3}}>
                   {section.items.map(function(item,i) {
                     return (
-                      <TouchableOpacity key={item.label} style={{flexDirection:'row',alignItems:'center',gap:S.md,padding:S.lg,borderBottomWidth:i<section.items.length-1?0.5:0,borderBottomColor:C.border}} activeOpacity={0.7}>
+                      <TouchableOpacity key={item.label} onPress={function(){handleMenuPress(item);}} style={{flexDirection:'row',alignItems:'center',gap:S.md,padding:S.lg,borderBottomWidth:i<section.items.length-1?0.5:0,borderBottomColor:C.border}} activeOpacity={0.7}>
                         <View style={{width:36,height:36,borderRadius:18,backgroundColor:C.primaryLt,alignItems:'center',justifyContent:'center'}}>
                           <Ionicons name={item.icon} size={18} color={C.primary} />
                         </View>
                         <Text style={{flex:1,fontSize:F.base,fontWeight:'500',color:C.text}}>{item.label}</Text>
-                        <Ionicons name="chevron-forward" size={16} color={C.gray} />
+                        <Ionicons name={item.route?'chevron-forward':'lock-closed-outline'} size={16} color={item.route?C.gray:C.border} />
                       </TouchableOpacity>
                     );
                   })}

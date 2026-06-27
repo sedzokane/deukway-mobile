@@ -2,22 +2,26 @@ import { useEffect, useRef, useState } from 'react';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import * as Notifications from 'expo-notifications';
 import Toast from 'react-native-toast-message';
 var authModule = require('../src/store/auth');
 var notifModule = require('../src/store/notifications');
 
 SplashScreen.preventAutoHideAsync();
 
-Notifications.setNotificationHandler({
-  handleNotification: async function() {
-    return {
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-    };
-  },
-});
+var Notifications = null;
+try { Notifications = require('expo-notifications'); } catch(e) {}
+
+if (Notifications) {
+  Notifications.setNotificationHandler({
+    handleNotification: async function() {
+      return {
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+      };
+    },
+  });
+}
 
 export default function RootLayout() {
   var readyS = useState(false); var ready = readyS[0]; var setReady = readyS[1];
@@ -46,7 +50,7 @@ export default function RootLayout() {
       setCount(function(n) { return n + 1; });
 
       if (auth.isAuthenticated && auth.token) {
-        notifModule.savePushToken(null, auth.token);
+        try { notifModule.savePushToken(null, auth.token); } catch(e) {}
       }
     });
   }, []);
@@ -64,30 +68,38 @@ export default function RootLayout() {
     }
 
     if (auth.isAuthenticated && auth.token) {
-      notifModule.savePushToken(null, auth.token);
+      try { notifModule.savePushToken(null, auth.token); } catch(e) {}
     }
 
-    notifListener.current = Notifications.addNotificationReceivedListener(function(notification) {
-      Toast.show({
-        type: 'info',
-        text1: notification.request.content.title,
-        text2: notification.request.content.body,
-        visibilityTime: 4000,
-      });
-    });
+    if (Notifications) {
+      try {
+        notifListener.current = Notifications.addNotificationReceivedListener(function(notification) {
+          Toast.show({
+            type: 'info',
+            text1: notification.request.content.title,
+            text2: notification.request.content.body,
+            visibilityTime: 4000,
+          });
+        });
 
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(function(response) {
-      var data = response.notification.request.content.data;
-      if (data && data.type === 'message' && data.senderId) {
-        router.push('/chat/' + data.senderId);
-      } else if (data && data.type === 'visit') {
-        router.push('/tabs/visits');
-      }
-    });
+        responseListener.current = Notifications.addNotificationResponseReceivedListener(function(response) {
+          var data = response.notification.request.content.data;
+          if (data && data.type === 'message' && data.senderId) {
+            router.push('/chat/' + data.senderId);
+          } else if (data && data.type === 'visit') {
+            router.push('/tabs/visits');
+          }
+        });
+      } catch(e) {}
+    }
 
     return function() {
-      if (notifListener.current) Notifications.removeNotificationSubscription(notifListener.current);
-      if (responseListener.current) Notifications.removeNotificationSubscription(responseListener.current);
+      if (Notifications) {
+        try {
+          if (notifListener.current) Notifications.removeNotificationSubscription(notifListener.current);
+          if (responseListener.current) Notifications.removeNotificationSubscription(responseListener.current);
+        } catch(e) {}
+      }
     };
   }, [ready]);
 

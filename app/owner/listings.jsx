@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, RefreshControl } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, RefreshControl, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +7,8 @@ import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 var hooks = require('../../src/store/hooks');
 var listingsModule = require('../../src/store/listings');
+var apiModule = require('../../src/api/client');
+var api = apiModule.api;
 var useListings = hooks.useListings;
 var getToken = hooks.getToken;
 var t = require('../../src/theme');
@@ -16,16 +18,48 @@ function fmt(p) { return new Intl.NumberFormat('fr-SN').format(p); }
 
 export default function Listings() {
   var store = useListings();
-  var myListings = store.myListings || [];
+  var myListings = Array.isArray(store.myListings) ? store.myListings : [];
+  var refS = useState(false); var refreshing = refS[0]; var setRefreshing = refS[1];
 
   useEffect(function(){ listingsModule.listingsStore.fetchMyListings(getToken()); }, []);
 
   function onRefresh() {
-    listingsModule.listingsStore.fetchMyListings(getToken());
+    setRefreshing(true);
+    listingsModule.listingsStore.fetchMyListings(getToken()).then(function(){
+      setRefreshing(false);
+    }).catch(function(){ setRefreshing(false); });
   }
 
-  function handleDelete(id) {
-    Toast.show({ type:'error', text1:'Suppression', text2:'Bientot disponible', visibilityTime:2000 });
+  function handleToggleStatus(l) {
+    api.patch('/listings/'+l.id+'/toggle-status', {}, getToken()).then(function(updated) {
+      listingsModule.listingsStore.fetchMyListings(getToken());
+      Toast.show({
+        type: updated.isActive ? 'success' : 'info',
+        text1: updated.isActive ? 'Annonce activee' : 'Annonce desactivee',
+        text2: updated.isActive ? 'Votre annonce est visible' : 'Votre annonce est masquee',
+        visibilityTime: 2000,
+      });
+    }).catch(function() {
+      Toast.show({ type:'error', text1:'Erreur', text2:'Impossible de modifier le statut', visibilityTime:2000 });
+    });
+  }
+
+  function handleDelete(l) {
+    Alert.alert(
+      'Supprimer l annonce',
+      'Etes-vous sur de vouloir supprimer "'+l.title+'" ?',
+      [
+        { text:'Annuler', style:'cancel' },
+        { text:'Supprimer', style:'destructive', onPress: function() {
+          api.delete('/listings/'+l.id, getToken()).then(function() {
+            listingsModule.listingsStore.fetchMyListings(getToken());
+            Toast.show({ type:'success', text1:'Annonce supprimee', visibilityTime:2000 });
+          }).catch(function() {
+            Toast.show({ type:'error', text1:'Erreur', text2:'Impossible de supprimer', visibilityTime:2000 });
+          });
+        }},
+      ]
+    );
   }
 
   return (
@@ -45,7 +79,7 @@ export default function Listings() {
         </SafeAreaView>
       </LinearGradient>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{padding:S.lg,gap:S.md}}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{padding:S.lg,gap:S.md}} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[C.owner]} />}>
         {myListings.length===0&&(
           <View style={{alignItems:'center',paddingVertical:60}}>
             <Text style={{fontSize:48,marginBottom:12}}>🏠</Text>
@@ -65,9 +99,9 @@ export default function Listings() {
                 <LinearGradient colors={['transparent','rgba(0,0,0,0.6)']} style={StyleSheet.absoluteFillObject} />
                 <View style={{position:'absolute',bottom:S.md,left:S.md,right:S.md,flexDirection:'row',justifyContent:'space-between',alignItems:'flex-end'}}>
                   <Text style={{fontSize:F.lg,fontWeight:'900',color:'#fff'}}>{fmt(l.price)} F<Text style={{fontSize:F.xs,fontWeight:'400'}}>/mois</Text></Text>
-                  <View style={{borderRadius:R.full,paddingHorizontal:10,paddingVertical:4,backgroundColor:'#05996922',borderWidth:0.5,borderColor:'#059669'}}>
-                    <Text style={{fontSize:F.xs,fontWeight:'700',color:'#059669'}}>Active</Text>
-                  </View>
+                  <TouchableOpacity onPress={function(){handleToggleStatus(l);}} style={{borderRadius:R.full,paddingHorizontal:10,paddingVertical:4,backgroundColor:l.isActive?'#05996922':'#DC262622',borderWidth:0.5,borderColor:l.isActive?'#059669':'#DC2626'}}>
+                    <Text style={{fontSize:F.xs,fontWeight:'700',color:l.isActive?'#059669':'#DC2626'}}>{l.isActive?'Active':'Inactive'}</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
               <View style={{padding:S.md}}>
@@ -78,17 +112,24 @@ export default function Listings() {
                   <View style={{flex:1}} />
                   <Ionicons name="eye" size={12} color={C.gray} />
                   <Text style={{fontSize:F.xs,color:C.gray}}>{l.viewCount} vues</Text>
+                  {l.visits&&l.visits.length>0&&(
+                    <>
+                      <View style={{width:4}} />
+                      <Ionicons name="calendar" size={12} color={C.primary} />
+                      <Text style={{fontSize:F.xs,color:C.primary,fontWeight:'700'}}>{l.visits.length} visite{l.visits.length>1?'s':''}</Text>
+                    </>
+                  )}
                 </View>
                 <View style={{flexDirection:'row',gap:S.sm}}>
                   <TouchableOpacity onPress={function(){router.push('/listing/'+l.id);}} style={{flex:1,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:5,paddingVertical:9,borderRadius:R.lg,backgroundColor:C.ownerLt}}>
                     <Ionicons name="eye" size={14} color={C.owner} />
                     <Text style={{fontSize:F.xs,fontWeight:'700',color:C.owner}}>Voir</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={{flex:1,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:5,paddingVertical:9,borderRadius:R.lg,backgroundColor:C.primaryLt}}>
-                    <Ionicons name="create" size={14} color={C.primary} />
-                    <Text style={{fontSize:F.xs,fontWeight:'700',color:C.primary}}>Modifier</Text>
+                  <TouchableOpacity onPress={function(){handleToggleStatus(l);}} style={{flex:1,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:5,paddingVertical:9,borderRadius:R.lg,backgroundColor:l.isActive?'#FFF0F0':C.ownerLt}}>
+                    <Ionicons name={l.isActive?'pause-circle':'play-circle'} size={14} color={l.isActive?'#DC2626':C.owner} />
+                    <Text style={{fontSize:F.xs,fontWeight:'700',color:l.isActive?'#DC2626':C.owner}}>{l.isActive?'Desactiver':'Activer'}</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={function(){handleDelete(l.id);}} style={{flex:1,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:5,paddingVertical:9,borderRadius:R.lg,backgroundColor:'#FFF0F0'}}>
+                  <TouchableOpacity onPress={function(){handleDelete(l);}} style={{flex:1,flexDirection:'row',alignItems:'center',justifyContent:'center',gap:5,paddingVertical:9,borderRadius:R.lg,backgroundColor:'#FFF0F0'}}>
                     <Ionicons name="trash" size={14} color="#DC2626" />
                     <Text style={{fontSize:F.xs,fontWeight:'700',color:'#DC2626'}}>Supprimer</Text>
                   </TouchableOpacity>
