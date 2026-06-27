@@ -1,4 +1,4 @@
-var BASE_URL = 'http://localhost:3000/api';
+var BASE_URL = 'https://deukway-backend-production.up.railway.app/api';
 
 function getHeaders(token) {
   var headers = {
