@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, Image, Modal } from 'react-native';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, Image, Modal, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,6 +7,7 @@ import { router } from 'expo-router';
 var hooks = require('../../src/store/hooks');
 var listingsModule = require('../../src/store/listings');
 var useListings = hooks.useListings;
+var getToken = hooks.getToken;
 var t = require('../../src/theme');
 var C=t.C; var S=t.S; var R=t.R; var F=t.F;
 
@@ -37,8 +38,14 @@ export default function Search() {
   var furnS = useState(false); var furn = furnS[0]; var setFurn = furnS[1];
   var wifiS = useState(false); var wifi = wifiS[0]; var setWifi = wifiS[1];
   var acS = useState(false); var ac = acS[0]; var setAc = acS[1];
+  var refS = useState(false); var refreshing = refS[0]; var setRefreshing = refS[1];
 
-  useEffect(function() { listingsModule.listingsStore.fetch(); }, []);
+  useEffect(function() { listingsModule.listingsStore.fetch(null, getToken()); }, []);
+
+  function onRefresh() {
+    setRefreshing(true);
+    listingsModule.listingsStore.fetch(null, getToken()).then(function(){setRefreshing(false);});
+  }
 
   var px = PRIX[prixIdx];
   var filtered = store.items.filter(function(l) {
@@ -98,9 +105,9 @@ export default function Search() {
                 </TouchableOpacity>
               );
             })}
-            <Text style={{fontSize:F.sm,fontWeight:'800',color:C.muted,letterSpacing:1,textTransform:'uppercase',marginBottom:S.md,marginTop:S.xl}}>Équipements</Text>
+            <Text style={{fontSize:F.sm,fontWeight:'800',color:C.muted,letterSpacing:1,textTransform:'uppercase',marginBottom:S.md,marginTop:S.xl}}>Equipements</Text>
             <View style={{flexDirection:'row',gap:S.sm,flexWrap:'wrap'}}>
-              {[[furn,setFurn,'Meublé'],[wifi,setWifi,'Wifi'],[ac,setAc,'Climatisé']].map(function(item){
+              {[[furn,setFurn,'Meuble'],[wifi,setWifi,'Wifi'],[ac,setAc,'Climatise']].map(function(item){
                 return (
                   <TouchableOpacity key={item[2]} onPress={function(){item[1](function(v){return !v;});}} style={{flexDirection:'row',alignItems:'center',gap:6,paddingHorizontal:S.md,paddingVertical:9,borderRadius:R.full,borderWidth:1.5,borderColor:item[0]?C.primary:C.border,backgroundColor:item[0]?C.primaryLt:'#fff'}}>
                     <Ionicons name={item[0]?'checkmark-circle':'ellipse-outline'} size={16} color={item[0]?C.primary:C.gray} />
@@ -111,11 +118,11 @@ export default function Search() {
             </View>
             <View style={{flexDirection:'row',gap:S.sm,marginTop:S.xl}}>
               <TouchableOpacity onPress={function(){setPrixIdx(0);setFurn(false);setWifi(false);setAc(false);}} style={{flex:1,paddingVertical:14,alignItems:'center',borderRadius:R.xl,borderWidth:1,borderColor:C.border}}>
-                <Text style={{fontSize:F.base,fontWeight:'700',color:C.textMd}}>Réinitialiser</Text>
+                <Text style={{fontSize:F.base,fontWeight:'700',color:C.textMd}}>Reinitialiser</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={function(){setModal(false);}} style={{flex:2,borderRadius:R.xl,overflow:'hidden'}}>
                 <LinearGradient colors={['#F0A830','#D4821A']} start={{x:0,y:0}} end={{x:1,y:0}} style={{paddingVertical:14,alignItems:'center'}}>
-                  <Text style={{fontSize:F.base,fontWeight:'800',color:'#fff'}}>Voir {filtered.length} résultats</Text>
+                  <Text style={{fontSize:F.base,fontWeight:'800',color:'#fff'}}>Voir {filtered.length} resultats</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -123,14 +130,14 @@ export default function Search() {
         </View>
       </Modal>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{padding:S.lg,gap:S.md}}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{padding:S.lg,gap:S.md}} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[C.primary]} />}>
         <Text style={{fontSize:F.sm,color:C.muted,fontWeight:'600'}}>{filtered.length} annonce{filtered.length>1?'s':''}</Text>
         {filtered.map(function(l){
           return (
             <TouchableOpacity key={l.id} style={{backgroundColor:'#fff',borderRadius:R.xl,overflow:'hidden',flexDirection:'row',elevation:4}} onPress={function(){router.push('/listing/'+l.id);}} activeOpacity={0.9}>
               <View style={{width:110,height:110,position:'relative'}}>
                 {l.media&&l.media[0]?<Image source={{uri:l.media[0].url}} style={{width:'100%',height:'100%'}} resizeMode="cover" />:<View style={{width:'100%',height:'100%',backgroundColor:C.border}} />}
-                <TouchableOpacity style={{position:'absolute',top:6,right:6,width:28,height:28,borderRadius:14,backgroundColor:'rgba(0,0,0,0.3)',alignItems:'center',justifyContent:'center'}} onPress={function(){listingsModule.listingsStore.toggleFav(l.id);}}>
+                <TouchableOpacity style={{position:'absolute',top:6,right:6,width:28,height:28,borderRadius:14,backgroundColor:'rgba(0,0,0,0.3)',alignItems:'center',justifyContent:'center'}} onPress={function(){listingsModule.listingsStore.toggleFav(l.id, getToken());}}>
                   <Ionicons name={l.isFavorite?'heart':'heart-outline'} size={18} color={l.isFavorite?'#FF4040':'rgba(255,255,255,0.9)'} />
                 </TouchableOpacity>
               </View>
@@ -142,7 +149,7 @@ export default function Search() {
                 </View>
                 <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
                   <Text style={{fontSize:F.lg,fontWeight:'900',color:C.primary}}>{fmt(l.price)} <Text style={{fontSize:F.xs,fontWeight:'400',color:C.muted}}>F/mois</Text></Text>
-                  {l.isVerified&&<View style={{flexDirection:'row',alignItems:'center',backgroundColor:C.goldLt,borderRadius:R.full,paddingHorizontal:7,paddingVertical:3}}><Ionicons name="shield-checkmark" size={10} color={C.gold} /><Text style={{fontSize:F.xs,fontWeight:'700',color:C.gold}}> Vérifié</Text></View>}
+                  {l.isVerified&&<View style={{flexDirection:'row',alignItems:'center',backgroundColor:C.goldLt,borderRadius:R.full,paddingHorizontal:7,paddingVertical:3}}><Ionicons name="shield-checkmark" size={10} color={C.gold} /><Text style={{fontSize:F.xs,fontWeight:'700',color:C.gold}}> Verifie</Text></View>}
                 </View>
               </View>
             </TouchableOpacity>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Dimensions, Animated, RefreshControl, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, Animated, RefreshControl, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,14 +8,16 @@ var hooks = require('../../src/store/hooks');
 var listingsModule = require('../../src/store/listings');
 var useAuth = hooks.useAuth;
 var useListings = hooks.useListings;
+var getToken = hooks.getToken;
 var t = require('../../src/theme');
 var C=t.C; var S=t.S; var R=t.R; var F=t.F;
 
-var HERO = [
-  {photo:'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=900',tag:'Coup de coeur',label:'Studio Premium - Plateau',price:'120 000 F/mois',id:'l1'},
-  {photo:'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=900',tag:'Nouveau',label:'Appartement F3 - Mermoz',price:'280 000 F/mois',id:'l3'},
-  {photo:'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=900',tag:'Exclusif',label:'Studio - Almadies',price:'180 000 F/mois',id:'l5'},
+var HERO_PHOTOS = [
+  'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=900',
+  'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=900',
+  'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=900',
 ];
+var HERO_TAGS = ['Coup de coeur','Nouveau','Exclusif'];
 var CATS = [
   {v:'all',l:'Tout',icon:'apps'},
   {v:'STUDIO',l:'Studios',icon:'business'},
@@ -41,11 +43,11 @@ export default function Home() {
   var refS = useState(false); var refreshing = refS[0]; var setRefreshing = refS[1];
   var fade = useRef(new Animated.Value(1)).current;
 
-  useEffect(function() { listingsModule.listingsStore.fetch(); }, []);
+  useEffect(function() { listingsModule.listingsStore.fetch(null, getToken()); }, []);
   useEffect(function() {
     var timer = setInterval(function() {
       Animated.timing(fade,{toValue:0,duration:300,useNativeDriver:true}).start(function() {
-        setHeroIdx(function(i){return (i+1)%HERO.length;});
+        setHeroIdx(function(i){return (i+1)%3;});
         Animated.timing(fade,{toValue:1,duration:400,useNativeDriver:true}).start();
       });
     },4500);
@@ -53,12 +55,20 @@ export default function Home() {
   },[]);
 
   var h = new Date().getHours();
-  var greet = h<12?'Bonjour':h<18?'Bon après-midi':'Bonsoir';
-  var hero = HERO[heroIdx];
+  var greet = h<12?'Bonjour':h<18?'Bon apres-midi':'Bonsoir';
+
+  var heroItems = items.slice(0,3);
+  var heroPhoto = heroItems[heroIdx]&&heroItems[heroIdx].media&&heroItems[heroIdx].media[0]
+    ? heroItems[heroIdx].media[0].url
+    : HERO_PHOTOS[heroIdx];
+  var heroLabel = heroItems[heroIdx] ? heroItems[heroIdx].title : '';
+  var heroPrice = heroItems[heroIdx] ? fmt(heroItems[heroIdx].price)+' F/mois' : '';
+  var heroId = heroItems[heroIdx] ? heroItems[heroIdx].id : null;
+  var heroTag = HERO_TAGS[heroIdx];
 
   function onRefresh() {
     setRefreshing(true);
-    listingsModule.listingsStore.fetch().then(function(){setRefreshing(false);});
+    listingsModule.listingsStore.fetch(null, getToken()).then(function(){setRefreshing(false);});
   }
 
   return (
@@ -68,7 +78,7 @@ export default function Home() {
           <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'flex-start',marginBottom:S.lg}}>
             <View>
               <Text style={{fontSize:F.sm,color:'rgba(255,255,255,0.65)',marginBottom:3}}>{greet}, {user?user.firstName:''} 👋</Text>
-              <Text style={{fontSize:22,fontWeight:'900',color:'#fff',lineHeight:30,letterSpacing:-0.5}}>Trouvez votre{'\n'}logement idéal</Text>
+              <Text style={{fontSize:22,fontWeight:'900',color:'#fff',lineHeight:30,letterSpacing:-0.5}}>Trouvez votre{'\n'}logement ideal</Text>
             </View>
             <TouchableOpacity style={{width:42,height:42,borderRadius:21,backgroundColor:'rgba(255,255,255,0.12)',alignItems:'center',justifyContent:'center'}} onPress={function(){router.push('/notifications');}}>
               <Ionicons name="notifications" size={22} color="#fff" />
@@ -87,20 +97,22 @@ export default function Home() {
 
       <ScrollView showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[C.primary]} />}>
         <View style={{height:220,position:'relative',marginHorizontal:S.lg,marginTop:S.lg,borderRadius:R.xl2,overflow:'hidden',elevation:14}}>
-          <Animated.Image source={{uri:hero.photo}} style={{width:'100%',height:'100%',opacity:fade}} resizeMode="cover" />
+          <Animated.Image source={{uri:heroPhoto}} style={{width:'100%',height:'100%',opacity:fade}} resizeMode="cover" />
           <LinearGradient colors={['transparent','rgba(0,0,0,0.75)']} style={StyleSheet.absoluteFillObject} />
           <View style={{position:'absolute',bottom:S.lg,left:S.lg,right:90}}>
             <View style={{alignSelf:'flex-start',borderRadius:R.sm,paddingHorizontal:10,paddingVertical:4,marginBottom:S.sm,backgroundColor:C.primary}}>
-              <Text style={{fontSize:F.xs,fontWeight:'800',color:'#fff',letterSpacing:1}}>{hero.tag}</Text>
+              <Text style={{fontSize:F.xs,fontWeight:'800',color:'#fff',letterSpacing:1}}>{heroTag}</Text>
             </View>
-            <Text style={{fontSize:F.md,fontWeight:'700',color:'#fff',marginBottom:3}}>{hero.label}</Text>
-            <Text style={{fontSize:F.xl,fontWeight:'900',color:C.primary}}>{hero.price}</Text>
+            <Text style={{fontSize:F.md,fontWeight:'700',color:'#fff',marginBottom:3}} numberOfLines={1}>{heroLabel}</Text>
+            <Text style={{fontSize:F.xl,fontWeight:'900',color:C.primary}}>{heroPrice}</Text>
           </View>
-          <TouchableOpacity style={{position:'absolute',bottom:S.lg,right:S.md,backgroundColor:'rgba(255,255,255,0.15)',borderRadius:R.lg,paddingHorizontal:S.md,paddingVertical:8,borderWidth:1,borderColor:'rgba(255,255,255,0.25)'}} onPress={function(){router.push('/listing/'+hero.id);}}>
-            <Text style={{fontSize:F.sm,fontWeight:'700',color:'#fff'}}>Voir →</Text>
-          </TouchableOpacity>
+          {heroId&&(
+            <TouchableOpacity style={{position:'absolute',bottom:S.lg,right:S.md,backgroundColor:'rgba(255,255,255,0.15)',borderRadius:R.lg,paddingHorizontal:S.md,paddingVertical:8,borderWidth:1,borderColor:'rgba(255,255,255,0.25)'}} onPress={function(){router.push('/listing/'+heroId);}}>
+              <Text style={{fontSize:F.sm,fontWeight:'700',color:'#fff'}}>Voir →</Text>
+            </TouchableOpacity>
+          )}
           <View style={{position:'absolute',top:S.md,right:S.md,flexDirection:'row',gap:5}}>
-            {HERO.map(function(_,i){return <View key={i} style={{width:i===heroIdx?18:6,height:6,borderRadius:3,backgroundColor:i===heroIdx?C.primary:'rgba(255,255,255,0.3)'}} />;} )}
+            {[0,1,2].map(function(_,i){return <View key={i} style={{width:i===heroIdx?18:6,height:6,borderRadius:3,backgroundColor:i===heroIdx?C.primary:'rgba(255,255,255,0.3)'}} />;} )}
           </View>
         </View>
 
@@ -119,7 +131,7 @@ export default function Home() {
           {CATS.map(function(c){
             return (
               <TouchableOpacity key={c.v} style={{flexDirection:'row',alignItems:'center',gap:5,paddingHorizontal:S.md,paddingVertical:8,borderRadius:R.full,borderWidth:1,borderColor:cat===c.v?C.primary:C.border,backgroundColor:cat===c.v?C.primary:'#fff'}}
-                onPress={function(){setCat(c.v);listingsModule.listingsStore.fetch(c.v==='all'?undefined:c.v);}} activeOpacity={0.8}>
+                onPress={function(){setCat(c.v);listingsModule.listingsStore.fetch(c.v==='all'?null:{type:c.v}, getToken());}} activeOpacity={0.8}>
                 <Ionicons name={c.icon} size={13} color={cat===c.v?'#fff':C.primary} />
                 <Text style={{fontSize:F.sm,fontWeight:'600',color:cat===c.v?'#fff':C.textMd}}>{c.l}</Text>
               </TouchableOpacity>
@@ -129,7 +141,7 @@ export default function Home() {
 
         <View style={{paddingHorizontal:S.lg}}>
           <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:S.md,marginTop:S.lg}}>
-            <Text style={{fontSize:F.lg,fontWeight:'800',color:C.text,letterSpacing:-0.2}}>Annonces récentes</Text>
+            <Text style={{fontSize:F.lg,fontWeight:'800',color:C.text,letterSpacing:-0.2}}>Annonces recentes</Text>
             <TouchableOpacity onPress={function(){router.push('/tabs/search');}}>
               <Text style={{fontSize:F.sm,color:C.primary,fontWeight:'700'}}>Voir tout →</Text>
             </TouchableOpacity>
@@ -138,8 +150,8 @@ export default function Home() {
           <TouchableOpacity style={{flexDirection:'row',alignItems:'center',gap:S.md,backgroundColor:C.primaryLt,borderRadius:R.lg,padding:S.md,marginBottom:S.lg,borderWidth:0.5,borderColor:'rgba(212,130,26,0.2)'}} activeOpacity={0.88}>
             <Ionicons name="shield-checkmark" size={20} color={C.primary} />
             <View style={{flex:1}}>
-              <Text style={{fontSize:F.sm,fontWeight:'700',color:C.primary}}>Annonces vérifiées Deukway</Text>
-              <Text style={{fontSize:F.xs,color:C.gold}}>Propriétaires et biens contrôlés</Text>
+              <Text style={{fontSize:F.sm,fontWeight:'700',color:C.primary}}>Annonces verifiees Deukway</Text>
+              <Text style={{fontSize:F.xs,color:C.gold}}>Proprietaires et biens controles</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={C.primary} />
           </TouchableOpacity>
@@ -159,10 +171,10 @@ export default function Home() {
                   {l.isVerified&&(
                     <View style={{position:'absolute',top:S.md,right:50,flexDirection:'row',alignItems:'center',backgroundColor:'rgba(201,150,58,0.9)',borderRadius:R.sm,paddingHorizontal:8,paddingVertical:3}}>
                       <Ionicons name="shield-checkmark" size={10} color="#fff" />
-                      <Text style={{fontSize:F.xs,fontWeight:'700',color:'#fff'}}> Vérifié</Text>
+                      <Text style={{fontSize:F.xs,fontWeight:'700',color:'#fff'}}> Verifie</Text>
                     </View>
                   )}
-                  <TouchableOpacity style={{position:'absolute',top:S.sm,right:S.md,width:38,height:38,borderRadius:19,backgroundColor:'rgba(0,0,0,0.3)',alignItems:'center',justifyContent:'center'}} onPress={function(){listingsModule.listingsStore.toggleFav(l.id);}}>
+                  <TouchableOpacity style={{position:'absolute',top:S.sm,right:S.md,width:38,height:38,borderRadius:19,backgroundColor:'rgba(0,0,0,0.3)',alignItems:'center',justifyContent:'center'}} onPress={function(){listingsModule.listingsStore.toggleFav(l.id, getToken());}}>
                     <Ionicons name={l.isFavorite?'heart':'heart-outline'} size={20} color={l.isFavorite?'#FF4040':'rgba(255,255,255,0.85)'} />
                   </TouchableOpacity>
                   <View style={{position:'absolute',bottom:S.md,left:S.md}}>
@@ -176,9 +188,9 @@ export default function Home() {
                     <Text style={{fontSize:F.sm,color:C.muted,flex:1}}>{l.neighborhood}, {l.city}</Text>
                   </View>
                   <View style={{flexDirection:'row',flexWrap:'wrap',gap:6,marginBottom:S.sm}}>
-                    {l.isFurnished&&<View style={{backgroundColor:C.primaryLt,borderRadius:R.full,paddingHorizontal:9,paddingVertical:4}}><Text style={{fontSize:F.xs,fontWeight:'700',color:C.primary}}>Meublé</Text></View>}
+                    {l.isFurnished&&<View style={{backgroundColor:C.primaryLt,borderRadius:R.full,paddingHorizontal:9,paddingVertical:4}}><Text style={{fontSize:F.xs,fontWeight:'700',color:C.primary}}>Meuble</Text></View>}
                     {l.hasWifi&&<View style={{backgroundColor:C.primaryLt,borderRadius:R.full,paddingHorizontal:9,paddingVertical:4}}><Text style={{fontSize:F.xs,fontWeight:'700',color:C.primary}}>Wifi</Text></View>}
-                    {l.hasAC&&<View style={{backgroundColor:C.primaryLt,borderRadius:R.full,paddingHorizontal:9,paddingVertical:4}}><Text style={{fontSize:F.xs,fontWeight:'700',color:C.primary}}>Climatisé</Text></View>}
+                    {l.hasAC&&<View style={{backgroundColor:C.primaryLt,borderRadius:R.full,paddingHorizontal:9,paddingVertical:4}}><Text style={{fontSize:F.xs,fontWeight:'700',color:C.primary}}>Climatise</Text></View>}
                   </View>
                   <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingTop:S.sm,borderTopWidth:0.5,borderTopColor:C.border}}>
                     <View style={{flexDirection:'row',alignItems:'center',gap:S.sm}}>

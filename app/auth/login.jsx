@@ -15,10 +15,16 @@ export default function Login() {
   var pwS = useState(''); var pw = pwS[0]; var setPw = pwS[1];
   var showS = useState(false); var show = showS[0]; var setShow = showS[1];
 
+  function handlePhone(text) {
+    var clean = text.replace(/[^0-9+]/g,'');
+    setPhone(clean);
+  }
+
   function submit() {
     if (!phone) { Alert.alert('Requis','Entrez votre numéro de téléphone'); return; }
-    authModule.authStore.login(phone, pw).catch(function() {
-      Alert.alert('Erreur','Une erreur est survenue');
+    if (!pw) { Alert.alert('Requis','Entrez votre mot de passe'); return; }
+    authModule.authStore.login(phone, pw).catch(function(err) {
+      Alert.alert('Erreur', typeof err === 'string' ? err : 'Identifiants incorrects');
     });
   }
 
@@ -35,7 +41,7 @@ export default function Login() {
             <Text style={{fontSize:F.base,color:'rgba(255,255,255,0.6)',marginBottom:S.xl2}}>Connectez-vous à votre espace Deukway</Text>
             <View style={{backgroundColor:'#fff',borderRadius:R.xl2,padding:S.xl,elevation:16}}>
               <Text style={st.label}>Téléphone</Text>
-              <TextInput style={st.input} placeholder="+221 77 000 0000" placeholderTextColor={C.gray} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+              <TextInput style={st.input} placeholder="+221770000000" placeholderTextColor={C.gray} value={phone} onChangeText={handlePhone} keyboardType="phone-pad" />
               <Text style={st.label}>Mot de passe</Text>
               <View style={{flexDirection:'row',alignItems:'center',backgroundColor:C.bg,borderRadius:R.lg,borderWidth:1,borderColor:C.border}}>
                 <TextInput style={[st.input,{flex:1,borderWidth:0}]} placeholder="Mot de passe" placeholderTextColor={C.gray} value={pw} onChangeText={setPw} secureTextEntry={!show} />
@@ -55,10 +61,6 @@ export default function Login() {
             <TouchableOpacity onPress={function(){router.push('/auth/register');}} style={{alignItems:'center',marginTop:S.xl}}>
               <Text style={{color:'rgba(255,255,255,0.7)',fontSize:F.sm}}>Pas de compte ? <Text style={{color:C.primary,fontWeight:'800'}}>Créer un compte</Text></Text>
             </TouchableOpacity>
-            <View style={{marginTop:S.xl,backgroundColor:'rgba(255,255,255,0.08)',borderRadius:R.lg,padding:S.md}}>
-              <Text style={{fontSize:F.xs,color:'rgba(255,255,255,0.6)',textAlign:'center'}}>Mode demo — N importe quel login fonctionne</Text>
-              <Text style={{fontSize:F.xs,color:'rgba(255,255,255,0.6)',textAlign:'center',marginTop:3}}>Téléphone finissant par 0 = Propriétaire</Text>
-            </View>
           </ScrollView>
         </SafeAreaView>
       </View>

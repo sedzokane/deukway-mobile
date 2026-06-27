@@ -21,14 +21,19 @@
           "photosPermission": "Deukway accède à vos photos.",
           "cameraPermission": "Deukway utilise la caméra."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
-      "router": { "origin": false },
-      "eas": { "projectId": "464bd9e2-a81f-4554-84f3-18ceb455d9ac" }
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "464bd9e2-a81f-4554-84f3-18ceb455d9ac"
+      }
     }
   }
 }

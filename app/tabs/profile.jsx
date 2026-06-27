@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,8 +10,8 @@ var t = require('../../src/theme');
 var C=t.C; var S=t.S; var R=t.R; var F=t.F;
 
 var MENU = [
-  {section:'Mon compte',items:[{icon:'person-outline',label:'Informations personnelles'},{icon:'notifications-outline',label:'Notifications'},{icon:'shield-checkmark-outline',label:'Sécurité'}]},
-  {section:'Activité',items:[{icon:'heart-outline',label:'Mes favoris'},{icon:'document-text-outline',label:'Mes contrats'},{icon:'card-outline',label:'Paiements'}]},
+  {section:'Mon compte',items:[{icon:'person-outline',label:'Informations personnelles'},{icon:'notifications-outline',label:'Notifications'},{icon:'shield-checkmark-outline',label:'Securite'}]},
+  {section:'Activite',items:[{icon:'heart-outline',label:'Mes favoris'},{icon:'document-text-outline',label:'Mes contrats'},{icon:'card-outline',label:'Paiements'}]},
   {section:'Support',items:[{icon:'help-circle-outline',label:'Aide & FAQ'},{icon:'chatbubble-outline',label:'Nous contacter'},{icon:'star-outline',label:'Noter l application'}]},
 ];
 
@@ -22,12 +22,10 @@ export default function Profile() {
   function handleLogout() {
     Toast.show({
       type: 'error',
-      text1: 'Déconnexion',
-      text2: 'Vous avez été déconnecté avec succès',
+      text1: 'Deconnexion',
+      text2: 'Vous avez ete deconnecte avec succes',
       visibilityTime: 2000,
-      onHide: function() {
-        authModule.authStore.logout();
-      }
+      onHide: function() { authModule.authStore.logout(); }
     });
   }
 
@@ -36,14 +34,17 @@ export default function Profile() {
       <ScrollView showsVerticalScrollIndicator={false}>
         <LinearGradient colors={['#1A0800','#3A1800','#C8791A']} style={{paddingHorizontal:S.xl,paddingBottom:S.xl2,alignItems:'center'}}>
           <SafeAreaView edges={['top']} style={{alignItems:'center',width:'100%'}}>
-            <LinearGradient colors={['#F0A830','#D4821A']} style={{width:80,height:80,borderRadius:40,alignItems:'center',justifyContent:'center',borderWidth:3,borderColor:'rgba(255,255,255,0.3)',marginBottom:S.md,marginTop:S.sm}}>
-              <Text style={{fontSize:26,fontWeight:'900',color:'#fff'}}>{user?user.firstName[0]:''}{user?user.lastName[0]:''}</Text>
-            </LinearGradient>
+            {user&&user.avatar
+              ? <Image source={{uri:user.avatar}} style={{width:80,height:80,borderRadius:40,borderWidth:3,borderColor:'rgba(255,255,255,0.3)',marginBottom:S.md,marginTop:S.sm}} />
+              : <LinearGradient colors={['#F0A830','#D4821A']} style={{width:80,height:80,borderRadius:40,alignItems:'center',justifyContent:'center',borderWidth:3,borderColor:'rgba(255,255,255,0.3)',marginBottom:S.md,marginTop:S.sm}}>
+                  <Text style={{fontSize:26,fontWeight:'900',color:'#fff'}}>{user?user.firstName[0]:''}{user?user.lastName[0]:''}</Text>
+                </LinearGradient>
+            }
             <Text style={{fontSize:20,fontWeight:'900',color:'#fff'}}>{user?user.firstName:''} {user?user.lastName:''}</Text>
             <Text style={{fontSize:F.sm,color:'rgba(255,255,255,0.65)',marginTop:3}}>{user?user.phone:''}</Text>
             <View style={{flexDirection:'row',alignItems:'center',gap:5,marginTop:S.sm,backgroundColor:'rgba(255,255,255,0.1)',borderRadius:R.full,paddingHorizontal:S.md,paddingVertical:5}}>
               <Ionicons name="shield-checkmark" size={13} color={C.gold} />
-              <Text style={{fontSize:F.xs,fontWeight:'700',color:C.gold}}>Compte vérifié</Text>
+              <Text style={{fontSize:F.xs,fontWeight:'700',color:C.gold}}>Compte verifie</Text>
             </View>
           </SafeAreaView>
         </LinearGradient>
@@ -83,7 +84,7 @@ export default function Profile() {
 
           <TouchableOpacity style={{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:S.md,backgroundColor:'#FFF0F0',borderRadius:R.xl,padding:S.lg,borderWidth:0.5,borderColor:'#DC262633'}} onPress={handleLogout} activeOpacity={0.85}>
             <Ionicons name="log-out-outline" size={20} color="#DC2626" />
-            <Text style={{fontSize:F.base,fontWeight:'700',color:'#DC2626'}}>Se déconnecter</Text>
+            <Text style={{fontSize:F.base,fontWeight:'700',color:'#DC2626'}}>Se deconnecter</Text>
           </TouchableOpacity>
           <Text style={{textAlign:'center',fontSize:F.xs,color:C.gray,marginTop:S.md}}>Deukway v1.0.0</Text>
           <View style={{height:20}} />
