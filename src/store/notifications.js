@@ -1,38 +1,25 @@
-var Notifications = require('expo-notifications');
-var Device = require('expo-device');
-var Platform = require('react-native').Platform;
 var apiModule = require('../api/client');
 var api = apiModule.api;
 
-async function registerForPushNotifications(token) {
-  if (!Device.isDevice) return null;
-  
-  var perm = await Notifications.getPermissionsAsync();
-  if (perm.status !== 'granted') {
-    perm = await Notifications.requestPermissionsAsync();
-  }
-  if (perm.status !== 'granted') return null;
-
-  var pushToken = await Notifications.getExpoPushTokenAsync({
-    projectId: '464bd9e2-a81f-4554-84f3-18ceb455d9ac',
-  });
-
-  if (Platform.OS === 'android') {
-    Notifications.setNotificationChannelAsync('default', {
-      name: 'default',
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
+async function savePushToken(_, authToken) {
+  try {
+    var Device = require('expo-device');
+    if (!Device.isDevice) return;
+    var Notifications = require('expo-notifications');
+    var perm = await Notifications.getPermissionsAsync();
+    if (perm.status !== 'granted') {
+      perm = await Notifications.requestPermissionsAsync();
+    }
+    if (perm.status !== 'granted') return;
+    var pushToken = await Notifications.getExpoPushTokenAsync({
+      projectId: '464bd9e2-a81f-4554-84f3-18ceb455d9ac',
     });
-  }
-
-  return pushToken.data;
-}
-
-async function savePushToken(token, authToken) {
-  var pushToken = await registerForPushNotifications(authToken);
-  if (pushToken) {
-    await api.patch('/users/profile', { pushToken: pushToken }, authToken);
+    if (pushToken && pushToken.data) {
+      await api.patch('/users/profile', { pushToken: pushToken.data }, authToken);
+    }
+  } catch(e) {
+    console.log('Push ignored:', e.message);
   }
 }
 
-module.exports = { registerForPushNotifications, savePushToken };
+module.exports = { savePushToken: savePushToken };

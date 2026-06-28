@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, KeyboardAvoidingView, Platform, Image, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,8 +8,8 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import Toast from 'react-native-toast-message';
 var hooks = require('../../src/store/hooks');
-var listingsModule = require('../../src/store/listings');
 var apiModule = require('../../src/api/client');
+var api = apiModule.api;
 var getToken = hooks.getToken;
 var BASE_URL = apiModule.BASE_URL;
 var t = require('../../src/theme');
@@ -138,7 +138,11 @@ export default function Publish() {
 
     var token = getToken();
 
-    listingsModule.listingsStore.create(data, token).then(function(listing) {
+    api.post('/listings', data, token).then(function(listing) {
+      console.log('LISTING:', JSON.stringify(listing));
+      if (!listing || !listing.id) {
+        throw new Error('Listing non cree: ' + JSON.stringify(listing));
+      }
       if (photos.length > 0) {
         var formData = new FormData();
         photoFiles.forEach(function(f, i) {
@@ -152,9 +156,7 @@ export default function Publish() {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + token, 'ngrok-skip-browser-warning': 'true' },
           body: formData,
-        }).then(function() {
-          return listing;
-        });
+        }).then(function() { return listing; });
       }
       return listing;
     }).then(function() {
@@ -163,7 +165,8 @@ export default function Publish() {
       setTimeout(function() { router.push('/owner/listings'); }, 2000);
     }).catch(function(err) {
       setLoading(false);
-      Toast.show({ type:'error', text1:'Erreur', text2:'Impossible de publier', visibilityTime:2000 });
+      console.log('ERREUR publication:', String(err));
+      Toast.show({ type:'error', text1:'Erreur', text2:String(err), visibilityTime:4000 });
     });
   }
 
@@ -178,7 +181,6 @@ export default function Publish() {
         </LinearGradient>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{padding:S.lg}} keyboardShouldPersistTaps="handled">
-
           <Text style={st.section}>Photos du bien</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginBottom:S.xl}}>
             <View style={{flexDirection:'row',gap:S.sm}}>

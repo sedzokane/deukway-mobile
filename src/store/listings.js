@@ -42,12 +42,18 @@ var listingsStore = {
     setState({ loading:true });
     return api.get('/listings/my', token).then(function(data) {
       setState({ myListings: Array.isArray(data) ? data : [], loading:false });
-    }).catch(function() { setState({ loading:false }); });
+      return data;
+    }).catch(function(e) {
+      setState({ loading:false });
+      throw e;
+    });
   },
 
   create: function(data, token) {
     return api.post('/listings', data, token).then(function(listing) {
-      setState({ myListings: [listing].concat(state.myListings) });
+      if (listing && listing.id) {
+        setState({ myListings: [listing].concat(state.myListings) });
+      }
       return listing;
     });
   },

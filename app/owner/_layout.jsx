@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { View } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -27,7 +27,17 @@ export default function OwnerLayout() {
     }}>
       <Tabs.Screen name="dashboard" options={{title:'Dashboard',tabBarIcon:function(p){return <Ionicons name={p.focused?'grid':'grid-outline'} size={22} color={p.color} />;} }} />
       <Tabs.Screen name="listings" options={{title:'Mes biens',tabBarIcon:function(p){return <Ionicons name={p.focused?'home':'home-outline'} size={22} color={p.color} />;} }} />
-      <Tabs.Screen name="publish" options={{title:'',tabBarButton:function(props){return <View {...props} style={{flex:1,alignItems:'center',justifyContent:'center'}}><FabBtn /></View>;},tabBarIcon:function(){return null;}}} />
+      <Tabs.Screen name="publish" options={{
+        title:'',
+        tabBarButton: function() {
+          return (
+            <TouchableOpacity style={{flex:1,alignItems:'center',justifyContent:'center'}} onPress={function(){router.push('/owner/publish');}}>
+              <FabBtn />
+            </TouchableOpacity>
+          );
+        },
+        tabBarIcon: function(){ return null; }
+      }} />
       <Tabs.Screen name="visits" options={{title:'Visites',tabBarIcon:function(p){return <Ionicons name={p.focused?'calendar':'calendar-outline'} size={22} color={p.color} />;} }} />
       <Tabs.Screen name="account" options={{title:'Compte',tabBarIcon:function(p){return <Ionicons name={p.focused?'person':'person-outline'} size={22} color={p.color} />;} }} />
     </Tabs>
