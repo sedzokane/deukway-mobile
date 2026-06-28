@@ -20,12 +20,12 @@ var MENU = [
     {icon:'heart-outline',label:'Mes favoris',route:'/favorites'},
     {icon:'calendar-outline',label:'Mes visites',route:'/tabs/visits'},
     {icon:'document-text-outline',label:'Mes contrats',route:null},
-    {icon:'card-outline',label:'Paiements',route:null},
+    {icon:'card-outline',label:'Paiements',route:'/payment?amount=5000&description=Test paiement Deukway'},
   ]},
   {section:'Support',items:[
     {icon:'help-circle-outline',label:'Aide & FAQ',route:null},
     {icon:'chatbubble-outline',label:'Nous contacter',route:null},
-    {icon:'star-outline',label:'Noter l application',route:null},
+    {icon:'star-outline',label:"Noter l'application",route:null},
   ]},
 ];
 
@@ -99,11 +99,16 @@ export default function Profile() {
                   {section.items.map(function(item,i) {
                     return (
                       <TouchableOpacity key={item.label} onPress={function(){handleMenuPress(item);}} style={{flexDirection:'row',alignItems:'center',gap:S.md,padding:S.lg,borderBottomWidth:i<section.items.length-1?0.5:0,borderBottomColor:C.border}} activeOpacity={0.7}>
-                        <View style={{width:36,height:36,borderRadius:18,backgroundColor:C.primaryLt,alignItems:'center',justifyContent:'center'}}>
-                          <Ionicons name={item.icon} size={18} color={C.primary} />
+                        <View style={{width:36,height:36,borderRadius:18,backgroundColor:item.route?C.primaryLt:'#F5F5F5',alignItems:'center',justifyContent:'center'}}>
+                          <Ionicons name={item.icon} size={18} color={item.route?C.primary:C.gray} />
                         </View>
-                        <Text style={{flex:1,fontSize:F.base,fontWeight:'500',color:C.text}}>{item.label}</Text>
-                        <Ionicons name={item.route?'chevron-forward':'lock-closed-outline'} size={16} color={item.route?C.gray:C.border} />
+                        <Text style={{flex:1,fontSize:F.base,fontWeight:'500',color:item.route?C.text:C.muted}}>{item.label}</Text>
+                        {item.route
+                          ? <Ionicons name="chevron-forward" size={16} color={C.gray} />
+                          : <View style={{backgroundColor:'#F0F0F0',borderRadius:R.full,paddingHorizontal:8,paddingVertical:3}}>
+                              <Text style={{fontSize:9,fontWeight:'700',color:C.muted}}>BIENTOT</Text>
+                            </View>
+                        }
                       </TouchableOpacity>
                     );
                   })}
