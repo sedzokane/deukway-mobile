@@ -29,6 +29,19 @@ var MENU = [
   ]},
 ];
 
+function Avatar({ uri, size, colors, initials }) {
+  var s = size || 80;
+  var r = s / 2;
+  if (uri && uri.startsWith('http')) {
+    return <Image source={{uri:uri}} style={{width:s,height:s,borderRadius:r,borderWidth:3,borderColor:'rgba(255,255,255,0.3)',marginBottom:8,marginTop:4}} />;
+  }
+  return (
+    <LinearGradient colors={colors||['#F0A830','#D4821A']} style={{width:s,height:s,borderRadius:r,alignItems:'center',justifyContent:'center',borderWidth:3,borderColor:'rgba(255,255,255,0.3)',marginBottom:8,marginTop:4}}>
+      <Text style={{fontSize:s*0.32,fontWeight:'900',color:'#fff'}}>{initials}</Text>
+    </LinearGradient>
+  );
+}
+
 export default function Profile() {
   var auth = useAuth();
   var user = auth.user;
@@ -57,12 +70,7 @@ export default function Profile() {
         <LinearGradient colors={['#1A0800','#3A1800','#C8791A']} style={{paddingHorizontal:S.xl,paddingBottom:S.xl2,alignItems:'center'}}>
           <SafeAreaView edges={['top']} style={{alignItems:'center',width:'100%'}}>
             <TouchableOpacity onPress={function(){router.push('/profile/edit');}}>
-              {user&&user.avatar
-                ? <Image source={{uri:user.avatar}} style={{width:80,height:80,borderRadius:40,borderWidth:3,borderColor:'rgba(255,255,255,0.3)',marginBottom:S.md,marginTop:S.sm}} />
-                : <LinearGradient colors={['#F0A830','#D4821A']} style={{width:80,height:80,borderRadius:40,alignItems:'center',justifyContent:'center',borderWidth:3,borderColor:'rgba(255,255,255,0.3)',marginBottom:S.md,marginTop:S.sm}}>
-                    <Text style={{fontSize:26,fontWeight:'900',color:'#fff'}}>{user?user.firstName[0]:''}{user?user.lastName[0]:''}</Text>
-                  </LinearGradient>
-              }
+              <Avatar uri={user?user.avatar:null} size={80} initials={(user?user.firstName[0]:'')+(user?user.lastName[0]:'')} />
             </TouchableOpacity>
             <Text style={{fontSize:20,fontWeight:'900',color:'#fff'}}>{user?user.firstName:''} {user?user.lastName:''}</Text>
             <Text style={{fontSize:F.sm,color:'rgba(255,255,255,0.65)',marginTop:3}}>{user?user.phone:''}</Text>

@@ -21,6 +21,19 @@ function timeAgo(date) {
   return Math.floor(diff/1440) + 'j';
 }
 
+function UserAvatar({ user, size }) {
+  var s = size || 52;
+  var r = s / 2;
+  if (user && user.avatar && user.avatar.startsWith('http')) {
+    return <Image source={{uri:user.avatar}} style={{width:s,height:s,borderRadius:r}} />;
+  }
+  return (
+    <LinearGradient colors={['#F0A830','#D4821A']} style={{width:s,height:s,borderRadius:r,alignItems:'center',justifyContent:'center'}}>
+      <Text style={{fontSize:s*0.34,fontWeight:'900',color:'#fff'}}>{user?user.firstName[0]:''}{user?user.lastName[0]:''}</Text>
+    </LinearGradient>
+  );
+}
+
 export default function Conversations() {
   var auth = useAuth(); var user = auth.user;
   var convsS = useState([]); var convs = convsS[0]; var setConvs = convsS[1];
@@ -82,12 +95,7 @@ export default function Conversations() {
           if (!u) return null;
           return (
             <TouchableOpacity key={u.id} style={{flexDirection:'row',alignItems:'center',gap:S.md,padding:S.lg,backgroundColor:'#fff',borderBottomWidth:0.5,borderBottomColor:C.border}} onPress={function(){router.push('/chat/'+u.id);}} activeOpacity={0.85}>
-              {u.avatar
-                ? <Image source={{uri:u.avatar}} style={{width:52,height:52,borderRadius:26}} />
-                : <LinearGradient colors={['#F0A830','#D4821A']} style={{width:52,height:52,borderRadius:26,alignItems:'center',justifyContent:'center'}}>
-                    <Text style={{fontSize:18,fontWeight:'900',color:'#fff'}}>{u.firstName[0]}{u.lastName[0]}</Text>
-                  </LinearGradient>
-              }
+              <UserAvatar user={u} size={52} />
               <View style={{flex:1}}>
                 <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:3}}>
                   <Text style={{fontSize:F.base,fontWeight:'700',color:C.text}}>{u.firstName} {u.lastName}</Text>

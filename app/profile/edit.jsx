@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Image, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Image, Alert, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,14 +16,38 @@ var getToken = hooks.getToken;
 var t = require('../../src/theme');
 var C=t.C; var S=t.S; var R=t.R; var F=t.F;
 
+function isValidUrl(url) {
+  return url && (url.startsWith('http://') || url.startsWith('https://'));
+}
+
 export default function EditProfile() {
   var auth = useAuth(); var user = auth.user;
   var firstS = useState(user?user.firstName:''); var first = firstS[0]; var setFirst = firstS[1];
   var lastS = useState(user?user.lastName:''); var last = lastS[0]; var setLast = lastS[1];
   var emailS = useState(user?user.email||'':''); var email = emailS[0]; var setEmail = emailS[1];
   var cityS = useState(user?user.city||'':''); var city = cityS[0]; var setCity = cityS[1];
-  var avatarS = useState(user?user.avatar||null:null); var avatar = avatarS[0]; var setAvatar = avatarS[1];
+  var avatarS = useState(isValidUrl(user?user.avatar:null)?user.avatar:null);
+  var avatar = avatarS[0]; var setAvatar = avatarS[1];
   var loadingS = useState(false); var loading = loadingS[0]; var setLoading = loadingS[1];
+  var uploadingS = useState(false); var uploading = uploadingS[0]; var setUploading = uploadingS[1];
+
+  function uploadAvatar(formData) {
+    setUploading(true);
+    fetch(BASE_URL + '/media/avatar', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + getToken(), 'ngrok-skip-browser-warning': 'true' },
+      body: formData,
+    }).then(function(r) { return r.json(); }).then(function(data) {
+      setUploading(false);
+      if (data.url) {
+        setAvatar(data.url);
+        Toast.show({ type:'success', text1:'Photo mise a jour', visibilityTime:1500 });
+      }
+    }).catch(function() {
+      setUploading(false);
+      Toast.show({ type:'error', text1:'Erreur upload photo', visibilityTime:2000 });
+    });
+  }
 
   function pickAvatar() {
     if (typeof document !== 'undefined') {
@@ -33,33 +57,18 @@ export default function EditProfile() {
       input.onchange = function(e) {
         var file = e.target.files[0];
         if (!file) return;
-        var url = URL.createObjectURL(file);
-        setAvatar(url);
         var formData = new FormData();
         formData.append('file', file);
-        fetch(BASE_URL + '/media/avatar', {
-          method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + getToken(), 'ngrok-skip-browser-warning': 'true' },
-          body: formData,
-        }).then(function(r) { return r.json(); }).then(function(data) {
-          if (data.url) setAvatar(data.url);
-        });
+        uploadAvatar(formData);
       };
       input.click();
     } else {
       ImagePicker.launchImageLibraryAsync({ quality: 0.8 }).then(function(result) {
         if (!result.canceled) {
           var asset = result.assets[0];
-          setAvatar(asset.uri);
           var formData = new FormData();
           formData.append('file', { uri: asset.uri, type: 'image/jpeg', name: 'avatar.jpg' });
-          fetch(BASE_URL + '/media/avatar', {
-            method: 'POST',
-            headers: { 'Authorization': 'Bearer ' + getToken(), 'ngrok-skip-browser-warning': 'true' },
-            body: formData,
-          }).then(function(r) { return r.json(); }).then(function(data) {
-            if (data.url) setAvatar(data.url);
-          });
+          uploadAvatar(formData);
         }
       });
     }
@@ -104,18 +113,27 @@ export default function EditProfile() {
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{padding:S.lg}} keyboardShouldPersistTaps="handled">
           <View style={{alignItems:'center',marginBottom:S.xl}}>
-            <TouchableOpacity onPress={pickAvatar} style={{position:'relative'}}>
-              {avatar
-                ? <Image source={{uri:avatar}} style={{width:100,height:100,borderRadius:50,borderWidth:3,borderColor:C.primary}} />
-                : <LinearGradient colors={['#F0A830','#D4821A']} style={{width:100,height:100,borderRadius:50,alignItems:'center',justifyContent:'center',borderWidth:3,borderColor:C.primary}}>
-                    <Text style={{fontSize:32,fontWeight:'900',color:'#fff'}}>{first?first[0]:''}</Text>
-                  </LinearGradient>
-              }
-              <View style={{position:'absolute',bottom:0,right:0,width:32,height:32,borderRadius:16,backgroundColor:C.primary,alignItems:'center',justifyContent:'center',borderWidth:2,borderColor:'#fff'}}>
-                <Ionicons name="camera" size={16} color="#fff" />
-              </View>
+            <TouchableOpacity onPress={pickAvatar} style={{position:'relative'}} disabled={uploading}>
+              {uploading ? (
+                <View style={{width:100,height:100,borderRadius:50,backgroundColor:C.primaryLt,alignItems:'center',justifyContent:'center',borderWidth:3,borderColor:C.primary}}>
+                  <ActivityIndicator color={C.primary} size="large" />
+                </View>
+              ) : isValidUrl(avatar) ? (
+                <Image source={{uri:avatar}} style={{width:100,height:100,borderRadius:50,borderWidth:3,borderColor:C.primary}} />
+              ) : (
+                <LinearGradient colors={['#F0A830','#D4821A']} style={{width:100,height:100,borderRadius:50,alignItems:'center',justifyContent:'center',borderWidth:3,borderColor:C.primary}}>
+                  <Text style={{fontSize:32,fontWeight:'900',color:'#fff'}}>{first?first[0]:''}</Text>
+                </LinearGradient>
+              )}
+              {!uploading&&(
+                <View style={{position:'absolute',bottom:0,right:0,width:32,height:32,borderRadius:16,backgroundColor:C.primary,alignItems:'center',justifyContent:'center',borderWidth:2,borderColor:'#fff'}}>
+                  <Ionicons name="camera" size={16} color="#fff" />
+                </View>
+              )}
             </TouchableOpacity>
-            <Text style={{fontSize:F.sm,color:C.muted,marginTop:S.sm}}>Appuyer pour changer la photo</Text>
+            <Text style={{fontSize:F.sm,color:C.muted,marginTop:S.sm}}>
+              {uploading ? 'Upload en cours...' : 'Appuyer pour changer la photo'}
+            </Text>
           </View>
 
           <View style={{backgroundColor:'#fff',borderRadius:R.xl,padding:S.lg,marginBottom:S.lg,gap:S.md}}>
@@ -148,7 +166,7 @@ export default function EditProfile() {
             <Text style={{fontSize:F.xs,color:C.muted,marginTop:6}}>Le numero de telephone ne peut pas etre modifie</Text>
           </View>
 
-          <TouchableOpacity onPress={handleSave} disabled={loading} activeOpacity={0.88} style={{borderRadius:R.xl,overflow:'hidden',opacity:loading?0.6:1,marginBottom:S.xl}}>
+          <TouchableOpacity onPress={handleSave} disabled={loading||uploading} activeOpacity={0.88} style={{borderRadius:R.xl,overflow:'hidden',opacity:(loading||uploading)?0.6:1,marginBottom:S.xl}}>
             <LinearGradient colors={['#F0A830','#D4821A','#A85F0E']} start={{x:0,y:0}} end={{x:1,y:0}} style={{paddingVertical:16,alignItems:'center'}}>
               <Text style={{fontSize:F.md,fontWeight:'800',color:'#fff'}}>{loading?'Sauvegarde...':'Sauvegarder'}</Text>
             </LinearGradient>

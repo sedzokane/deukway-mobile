@@ -27,6 +27,10 @@ function uploadFile(file, token, onSuccess, onError) {
     .catch(onError);
 }
 
+function isValidUrl(url) {
+  return url && (url.startsWith('http://') || url.startsWith('https://'));
+}
+
 function TypingIndicator() {
   var dot1 = useRef(new (require('react-native').Animated.Value)(0)).current;
   var dot2 = useRef(new (require('react-native').Animated.Value)(0)).current;
@@ -209,7 +213,7 @@ export default function ChatScreen() {
     return (
       <View style={{flexDirection:'row',justifyContent:isMine?'flex-end':'flex-start',marginBottom:S.sm,paddingHorizontal:S.lg}}>
         {!isMine&&(
-          m.sender&&m.sender.avatar
+          m.sender && isValidUrl(m.sender.avatar)
             ? <Image source={{uri:m.sender.avatar}} style={{width:32,height:32,borderRadius:16,marginRight:S.sm}} />
             : <LinearGradient colors={['#F0A830','#D4821A']} style={{width:32,height:32,borderRadius:16,alignItems:'center',justifyContent:'center',marginRight:S.sm}}>
                 <Text style={{fontSize:12,fontWeight:'900',color:'#fff'}}>{m.sender?m.sender.firstName[0]:''}</Text>
@@ -253,7 +257,7 @@ export default function ChatScreen() {
                 <Ionicons name="arrow-back" size={24} color="#fff" />
               </TouchableOpacity>
               <View style={{position:'relative'}}>
-                {otherUser&&otherUser.avatar
+                {isValidUrl(otherUser&&otherUser.avatar)
                   ? <Image source={{uri:otherUser.avatar}} style={{width:38,height:38,borderRadius:19}} />
                   : <LinearGradient colors={['#F0A830','#D4821A']} style={{width:38,height:38,borderRadius:19,alignItems:'center',justifyContent:'center'}}>
                       <Text style={{fontSize:14,fontWeight:'900',color:'#fff'}}>{otherUser?otherUser.firstName[0]:''}</Text>
