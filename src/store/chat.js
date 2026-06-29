@@ -33,18 +33,32 @@ var chatStore = {
     var socket = io(SOCKET_URL + '/chat', {
       auth: { token: token },
       transports: ['websocket'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
     });
 
     socket.on('connect', function() {
+      console.log('Socket connected');
       setState({ connected: true });
     });
 
     socket.on('disconnect', function() {
+      console.log('Socket disconnected');
       setState({ connected: false });
     });
 
     socket.on('new_message', function(message) {
+      console.log('New message received:', message.id, 'type:', message.type);
       setState({ messages: state.messages.concat(message) });
+    });
+
+    socket.on('messages_read', function(data) {
+      setState({
+        messages: state.messages.map(function(m) {
+          return m.receiverId === data.userId ? Object.assign({}, m, { isRead: true }) : m;
+        }),
+      });
     });
 
     setState({ socket: socket, currentUserId: userId });
@@ -58,14 +72,23 @@ var chatStore = {
   },
 
   joinConversation: function(receiverId) {
-    if (state.socket) {
+    if (!state.socket) return;
+    if (state.connected) {
       state.socket.emit('join_conversation', { receiverId: receiverId });
+    } else {
+      state.socket.once('connect', function() {
+        state.socket.emit('join_conversation', { receiverId: receiverId });
+      });
     }
   },
 
-  sendMessage: function(receiverId, content) {
+  sendMessage: function(receiverId, content, type) {
     if (state.socket) {
-      state.socket.emit('send_message', { receiverId: receiverId, content: content });
+      state.socket.emit('send_message', {
+        receiverId: receiverId,
+        content: content,
+        type: type || 'text',
+      });
     }
   },
 

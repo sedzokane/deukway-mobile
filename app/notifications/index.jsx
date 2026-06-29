@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, Animated, PanResponder } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+var AsyncStorage = require('@react-native-async-storage/async-storage').default;
 var hooks = require('../../src/store/hooks');
 var apiModule = require('../../src/api/client');
 var api = apiModule.api;
@@ -11,6 +12,8 @@ var useAuth = hooks.useAuth;
 var getToken = hooks.getToken;
 var t = require('../../src/theme');
 var C=t.C; var S=t.S; var R=t.R; var F=t.F;
+
+var STORAGE_KEY = 'dkw_hidden_notifs';
 
 function timeAgo(date) {
   var now = new Date();
@@ -27,17 +30,114 @@ function getNotifStyle(type) {
   if (type === 'visit_confirmed') return {icon:'checkmark-circle',color:'#059669',bg:'#05966922'};
   if (type === 'visit_cancelled') return {icon:'close-circle',color:'#DC2626',bg:'#FFF0F0'};
   if (type === 'message') return {icon:'chatbubble',color:'#D4821A',bg:'#FEF4E7'};
+  if (type === 'contract') return {icon:'document-text',color:'#7C3AED',bg:'#EDE9FE'};
+  if (type === 'contract_signed') return {icon:'checkmark-circle',color:'#059669',bg:'#D1FAE5'};
+  if (type === 'contract_rejected') return {icon:'close-circle',color:'#DC2626',bg:'#FEE2E2'};
   return {icon:'notifications',color:C.primary,bg:C.primaryLt};
+}
+
+function NotifItem({ n, onDismiss, onPress }) {
+  var translateX = useRef(new Animated.Value(0)).current;
+  var opacity = useRef(new Animated.Value(1)).current;
+  var style = getNotifStyle(n.type);
+
+  var panResponder = PanResponder.create({
+    onMoveShouldSetPanResponder: function(evt, gs) {
+      return Math.abs(gs.dx) > 10 && Math.abs(gs.dy) < 20;
+    },
+    onPanResponderMove: function(evt, gs) {
+      if (gs.dx < 0) translateX.setValue(gs.dx);
+    },
+    onPanResponderRelease: function(evt, gs) {
+      if (gs.dx < -80) {
+        Animated.parallel([
+          Animated.timing(translateX, { toValue: -400, duration: 200, useNativeDriver: true }),
+          Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+        ]).start(function() { onDismiss(n.id); });
+      } else {
+        Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
+      }
+    },
+  });
+
+  function handlePress() {
+    Animated.parallel([
+      Animated.timing(opacity, { toValue: 0, duration: 150, useNativeDriver: true }),
+      Animated.timing(translateX, { toValue: -400, duration: 150, useNativeDriver: true }),
+    ]).start(function() {
+      onDismiss(n.id);
+      onPress(n);
+    });
+  }
+
+  function handleClose() {
+    Animated.parallel([
+      Animated.timing(opacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+      Animated.timing(translateX, { toValue: -400, duration: 200, useNativeDriver: true }),
+    ]).start(function() { onDismiss(n.id); });
+  }
+
+  return (
+    <Animated.View style={{transform:[{translateX:translateX}],opacity:opacity,marginBottom:S.sm}} {...panResponder.panHandlers}>
+      <TouchableOpacity onPress={handlePress} style={{backgroundColor:'#fff',borderRadius:R.xl,padding:S.lg,flexDirection:'row',alignItems:'flex-start',gap:S.md,elevation:3}} activeOpacity={0.85}>
+        <View style={{width:44,height:44,borderRadius:22,backgroundColor:style.bg,alignItems:'center',justifyContent:'center'}}>
+          <Ionicons name={style.icon} size={22} color={style.color} />
+        </View>
+        <View style={{flex:1}}>
+          <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:3}}>
+            <Text style={{fontSize:F.base,fontWeight:'700',color:C.text,flex:1,paddingRight:S.sm}}>{n.title}</Text>
+            <View style={{width:8,height:8,borderRadius:4,backgroundColor:C.primary}} />
+          </View>
+          <Text style={{fontSize:F.sm,color:C.muted,lineHeight:18}} numberOfLines={2}>{n.body}</Text>
+          <Text style={{fontSize:F.xs,color:C.gray,marginTop:6}}>{timeAgo(n.date)}</Text>
+        </View>
+        <TouchableOpacity onPress={handleClose} style={{padding:4,marginTop:-4}}>
+          <Ionicons name="close-circle" size={20} color={C.gray} />
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Animated.View>
+  );
 }
 
 export default function NotificationsScreen() {
   var auth = useAuth(); var user = auth.user;
   var visitsS = useState([]); var visits = visitsS[0]; var setVisits = visitsS[1];
   var refS = useState(false); var refreshing = refS[0]; var setRefreshing = refS[1];
-  var readS = useState({}); var read = readS[0]; var setRead = readS[1];
   var hiddenS = useState({}); var hidden = hiddenS[0]; var setHidden = hiddenS[1];
-  var timers = useRef({});
+  var loadedS = useState(false); var loaded = loadedS[0]; var setLoaded = loadedS[1];
   var isOwner = user && user.role === 'OWNER';
+
+  // Charger hidden depuis AsyncStorage
+  useEffect(function() {
+    AsyncStorage.getItem(STORAGE_KEY).then(function(raw) {
+      if (raw) {
+        try { setHidden(JSON.parse(raw)); } catch(e) {}
+      }
+      setLoaded(true);
+    }).catch(function() { setLoaded(true); });
+  }, []);
+
+  function saveHidden(next) {
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(function(){});
+  }
+
+  function dismiss(id) {
+    setHidden(function(prev) {
+      var next = Object.assign({}, prev, {[id]:true});
+      saveHidden(next);
+      return next;
+    });
+  }
+
+  function dismissAll() {
+    var all = {};
+    notifs.forEach(function(n) { all[n.id] = true; });
+    setHidden(function(prev) {
+      var next = Object.assign({}, prev, all);
+      saveHidden(next);
+      return next;
+    });
+  }
 
   function buildNotifs(visits) {
     var notifs = [];
@@ -53,15 +153,16 @@ export default function NotificationsScreen() {
         });
       } else {
         var type = v.status==='CONFIRMED'?'visit_confirmed':v.status==='CANCELLED'?'visit_cancelled':'visit_pending';
+        var title = v.status==='CONFIRMED'?'Visite confirmée':v.status==='CANCELLED'?'Visite annulée':'Demande en attente';
         var body = v.status==='CONFIRMED'
-          ? 'Votre visite pour "'+(v.listing?v.listing.title:'')+'" a ete confirmee'
+          ? 'Votre visite pour "'+(v.listing?v.listing.title:'')+'" a été confirmée'
           : v.status==='CANCELLED'
-          ? 'Votre visite pour "'+(v.listing?v.listing.title:'')+'" a ete annulee'
+          ? 'Votre visite pour "'+(v.listing?v.listing.title:'')+'" a été annulée'
           : 'En attente de confirmation pour "'+(v.listing?v.listing.title:'')+'"';
         notifs.push({
           id: v.id+'_tenant',
           type: type,
-          title: v.status==='CONFIRMED'?'Visite confirmee':v.status==='CANCELLED'?'Visite annulee':'Demande en attente',
+          title: title,
           body: body,
           date: v.updatedAt||v.createdAt,
           route: '/tabs/visits',
@@ -72,19 +173,8 @@ export default function NotificationsScreen() {
   }
 
   function handlePress(n) {
-    if (read[n.id]) return;
-    setRead(function(prev) { return Object.assign({}, prev, {[n.id]:true}); });
-    timers.current[n.id] = setTimeout(function() {
-      setHidden(function(prev) { return Object.assign({}, prev, {[n.id]:true}); });
-    }, 60000);
     router.push(n.route);
   }
-
-  useEffect(function() {
-    return function() {
-      Object.values(timers.current).forEach(function(t) { clearTimeout(t); });
-    };
-  }, []);
 
   function load() {
     var endpoint = isOwner ? '/visits/owner' : '/visits/my';
@@ -104,7 +194,14 @@ export default function NotificationsScreen() {
 
   useEffect(function() { load(); }, []);
 
-  var notifs = buildNotifs(visits).filter(function(n){ return !hidden[n.id]; });
+  var allNotifs = buildNotifs(visits);
+  var notifs = allNotifs.filter(function(n){ return !hidden[n.id]; });
+
+  if (!loaded) return (
+    <View style={{flex:1,backgroundColor:C.bg,alignItems:'center',justifyContent:'center'}}>
+      <Text style={{color:C.muted}}>Chargement...</Text>
+    </View>
+  );
 
   return (
     <View style={{flex:1,backgroundColor:C.bg}}>
@@ -114,44 +211,39 @@ export default function NotificationsScreen() {
             <TouchableOpacity onPress={function(){router.back();}}>
               <Ionicons name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
-            <View>
+            <View style={{flex:1}}>
               <Text style={{fontSize:22,fontWeight:'900',color:'#fff'}}>Notifications</Text>
-              <Text style={{fontSize:F.sm,color:'rgba(255,255,255,0.65)'}}>{notifs.length} notification{notifs.length>1?'s':''}</Text>
+              <Text style={{fontSize:F.sm,color:'rgba(255,255,255,0.65)'}}>{notifs.length} notification{notifs.length!==1?'s':''}</Text>
             </View>
+            {notifs.length>0&&(
+              <TouchableOpacity onPress={dismissAll} style={{backgroundColor:'rgba(255,255,255,0.15)',borderRadius:R.full,paddingHorizontal:S.md,paddingVertical:6}}>
+                <Text style={{fontSize:F.xs,fontWeight:'700',color:'#fff'}}>Tout effacer</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </SafeAreaView>
       </LinearGradient>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{padding:S.lg,gap:S.sm}} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[C.primary]} />}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{padding:S.lg}} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[C.primary]} />}>
+        {notifs.length>0&&(
+          <View style={{backgroundColor:'rgba(0,0,0,0.04)',borderRadius:R.lg,padding:S.md,marginBottom:S.lg,flexDirection:'row',alignItems:'center',gap:S.sm}}>
+            <Ionicons name="information-circle-outline" size={16} color={C.muted} />
+            <Text style={{fontSize:F.xs,color:C.muted}}>Glissez vers la gauche ou appuyez sur ✕ pour supprimer</Text>
+          </View>
+        )}
+
         {notifs.length===0&&(
           <View style={{alignItems:'center',paddingVertical:60}}>
             <Text style={{fontSize:48,marginBottom:12}}>🔔</Text>
             <Text style={{fontSize:F.lg,fontWeight:'800',color:C.text}}>Aucune notification</Text>
-            <Text style={{fontSize:F.sm,color:C.muted,marginTop:8}}>Vos notifications apparaitront ici</Text>
+            <Text style={{fontSize:F.sm,color:C.muted,marginTop:8}}>Vos notifications apparaîtront ici</Text>
           </View>
         )}
+
         {notifs.map(function(n){
-          var style = getNotifStyle(n.type);
-          var isRead = !!read[n.id];
-          return (
-            <TouchableOpacity key={n.id} onPress={function(){handlePress(n);}} style={{backgroundColor:isRead?'#F8F8F8':'#fff',borderRadius:R.xl,padding:S.lg,flexDirection:'row',alignItems:'flex-start',gap:S.md,elevation:isRead?1:3,opacity:isRead?0.6:1}} activeOpacity={0.85}>
-              <View style={{width:44,height:44,borderRadius:22,backgroundColor:style.bg,alignItems:'center',justifyContent:'center'}}>
-                <Ionicons name={style.icon} size={22} color={style.color} />
-              </View>
-              <View style={{flex:1}}>
-                <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:3}}>
-                  <Text style={{fontSize:F.base,fontWeight:isRead?'500':'700',color:isRead?C.muted:C.text}}>{n.title}</Text>
-                  {!isRead&&<View style={{width:8,height:8,borderRadius:4,backgroundColor:C.primary}} />}
-                </View>
-                <Text style={{fontSize:F.sm,color:C.muted,lineHeight:18}} numberOfLines={2}>{n.body}</Text>
-                <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:6}}>
-                  <Text style={{fontSize:F.xs,color:C.gray}}>{timeAgo(n.date)}</Text>
-                  {isRead&&<Text style={{fontSize:F.xs,color:C.gray}}>Disparait dans 1 min</Text>}
-                </View>
-              </View>
-            </TouchableOpacity>
-          );
+          return <NotifItem key={n.id} n={n} onDismiss={dismiss} onPress={handlePress} />;
         })}
+
         <View style={{height:20}} />
       </ScrollView>
     </View>
