@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, Image, Modal, RefreshControl, Platform } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, Image, Modal, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -27,10 +27,10 @@ var PRIX = [
   {l:'Plus de 200 000 F',min:200000,max:999999},
 ];
 
-// Dakar centre
-var DAKAR = { latitude: 14.6928, longitude: -17.4467, latitudeDelta: 0.1, longitudeDelta: 0.1 };
-
 function fmt(p) { return new Intl.NumberFormat('fr-SN').format(p); }
+
+var MapView = null;
+var Marker = null;
 
 export default function Search() {
   var store = useListings();
@@ -42,15 +42,6 @@ export default function Search() {
   var wifiS = useState(false); var wifi = wifiS[0]; var setWifi = wifiS[1];
   var acS = useState(false); var ac = acS[0]; var setAc = acS[1];
   var refS = useState(false); var refreshing = refS[0]; var setRefreshing = refS[1];
-  var viewModeS = useState('list'); var viewMode = viewModeS[0]; var setViewMode = viewModeS[1];
-  var selectedS = useState(null); var selected = selectedS[0]; var setSelected = selectedS[1];
-  var MapView = null;
-  var Marker = null;
-  try {
-    var maps = require('react-native-maps');
-    MapView = maps.default;
-    Marker = maps.Marker;
-  } catch(e) {}
 
   useEffect(function() { listingsModule.listingsStore.fetch(null, getToken()); }, []);
 
@@ -69,7 +60,6 @@ export default function Search() {
       (!ac || l.hasAC);
   });
 
-  var withCoords = filtered.filter(function(l){ return l.latitude && l.longitude; });
   var hasFilter = prixIdx>0 || furn || wifi || ac;
 
   return (
@@ -77,17 +67,6 @@ export default function Search() {
       <SafeAreaView edges={['top']} style={{backgroundColor:'#fff',paddingHorizontal:S.lg,paddingBottom:S.sm,borderBottomWidth:0.5,borderBottomColor:C.border}}>
         <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:S.md}}>
           <Text style={{fontSize:26,fontWeight:'900',color:C.text,letterSpacing:-0.5}}>Explorer</Text>
-          {/* Toggle vue liste/carte */}
-          {MapView&&(
-            <View style={{flexDirection:'row',backgroundColor:C.bg,borderRadius:R.lg,borderWidth:1,borderColor:C.border,overflow:'hidden'}}>
-              <TouchableOpacity onPress={function(){setViewMode('list');setSelected(null);}} style={{paddingHorizontal:S.md,paddingVertical:7,backgroundColor:viewMode==='list'?C.primary:'transparent'}}>
-                <Ionicons name="list" size={18} color={viewMode==='list'?'#fff':C.muted} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={function(){setViewMode('map');}} style={{paddingHorizontal:S.md,paddingVertical:7,backgroundColor:viewMode==='map'?C.primary:'transparent'}}>
-                <Ionicons name="map" size={18} color={viewMode==='map'?'#fff':C.muted} />
-              </TouchableOpacity>
-            </View>
-          )}
         </View>
         <View style={{flexDirection:'row',alignItems:'center',gap:S.sm,marginBottom:S.sm}}>
           <View style={{flex:1,flexDirection:'row',alignItems:'center',backgroundColor:C.bg,borderRadius:R.xl,paddingHorizontal:S.md,paddingVertical:S.sm,gap:S.sm,borderWidth:1,borderColor:C.border}}>
@@ -111,100 +90,34 @@ export default function Search() {
         </ScrollView>
       </SafeAreaView>
 
-      {/* Vue carte */}
-      {viewMode==='map' && MapView && (
-        <View style={{flex:1}}>
-          <MapView
-            style={{flex:1}}
-            initialRegion={DAKAR}
-            showsUserLocation={true}
-            showsMyLocationButton={true}
-          >
-            {withCoords.map(function(l) {
-              return (
-                <Marker
-                  key={l.id}
-                  coordinate={{ latitude: l.latitude, longitude: l.longitude }}
-                  onPress={function(){ setSelected(l); }}
-                >
-                  <View style={{backgroundColor:selected&&selected.id===l.id?C.primary:'#fff',borderRadius:R.full,paddingHorizontal:S.sm,paddingVertical:5,borderWidth:2,borderColor:C.primary,elevation:4}}>
-                    <Text style={{fontSize:F.xs,fontWeight:'900',color:selected&&selected.id===l.id?'#fff':C.primary}}>{fmt(l.price)}</Text>
-                  </View>
-                </Marker>
-              );
-            })}
-          </MapView>
-
-          {/* Card annonce sélectionnée */}
-          {selected&&(
-            <View style={{position:'absolute',bottom:20,left:S.lg,right:S.lg}}>
-              <TouchableOpacity onPress={function(){router.push('/listing/'+selected.id);}} style={{backgroundColor:'#fff',borderRadius:R.xl,overflow:'hidden',flexDirection:'row',elevation:8}} activeOpacity={0.9}>
-                <View style={{width:100,height:100}}>
-                  {selected.media&&selected.media[0]
-                    ? <Image source={{uri:selected.media[0].url}} style={{width:'100%',height:'100%'}} resizeMode="cover" />
-                    : <View style={{width:'100%',height:'100%',backgroundColor:C.border}} />
-                  }
-                </View>
-                <View style={{flex:1,padding:S.md,justifyContent:'center'}}>
-                  <Text style={{fontSize:F.base,fontWeight:'800',color:C.text,marginBottom:4}} numberOfLines={1}>{selected.title}</Text>
-                  <View style={{flexDirection:'row',alignItems:'center',gap:4,marginBottom:S.sm}}>
-                    <Ionicons name="location" size={11} color={C.primary} />
-                    <Text style={{fontSize:F.xs,color:C.muted}}>{selected.neighborhood}, {selected.city}</Text>
-                  </View>
-                  <Text style={{fontSize:F.lg,fontWeight:'900',color:C.primary}}>{fmt(selected.price)} <Text style={{fontSize:F.xs,fontWeight:'400',color:C.muted}}>F/mois</Text></Text>
-                </View>
-                <TouchableOpacity onPress={function(){setSelected(null);}} style={{padding:S.sm,alignSelf:'flex-start'}}>
-                  <Ionicons name="close" size={20} color={C.muted} />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{padding:S.lg,gap:S.md}} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[C.primary]} />}>
+        <Text style={{fontSize:F.sm,color:C.muted,fontWeight:'600'}}>{filtered.length} annonce{filtered.length>1?'s':''}</Text>
+        {filtered.map(function(l){
+          return (
+            <TouchableOpacity key={l.id} style={{backgroundColor:'#fff',borderRadius:R.xl,overflow:'hidden',flexDirection:'row',elevation:4}} onPress={function(){router.push('/listing/'+l.id);}} activeOpacity={0.9}>
+              <View style={{width:110,height:110,position:'relative'}}>
+                {l.media&&l.media[0]?<Image source={{uri:l.media[0].url}} style={{width:'100%',height:'100%'}} resizeMode="cover" />:<View style={{width:'100%',height:'100%',backgroundColor:C.border}} />}
+                <TouchableOpacity style={{position:'absolute',top:6,right:6,width:28,height:28,borderRadius:14,backgroundColor:'rgba(0,0,0,0.3)',alignItems:'center',justifyContent:'center'}} onPress={function(){listingsModule.listingsStore.toggleFav(l.id, getToken());}}>
+                  <Ionicons name={l.isFavorite?'heart':'heart-outline'} size={18} color={l.isFavorite?'#FF4040':'rgba(255,255,255,0.9)'} />
                 </TouchableOpacity>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Compteur */}
-          <View style={{position:'absolute',top:S.md,right:S.md,backgroundColor:'#fff',borderRadius:R.full,paddingHorizontal:S.md,paddingVertical:6,elevation:4}}>
-            <Text style={{fontSize:F.xs,fontWeight:'700',color:C.text}}>{withCoords.length} sur la carte</Text>
-          </View>
-        </View>
-      )}
-
-      {/* Vue liste */}
-      {viewMode==='list'&&(
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{padding:S.lg,gap:S.md}} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[C.primary]} />}>
-          <Text style={{fontSize:F.sm,color:C.muted,fontWeight:'600'}}>{filtered.length} annonce{filtered.length>1?'s':''}</Text>
-          {filtered.map(function(l){
-            return (
-              <TouchableOpacity key={l.id} style={{backgroundColor:'#fff',borderRadius:R.xl,overflow:'hidden',flexDirection:'row',elevation:4}} onPress={function(){router.push('/listing/'+l.id);}} activeOpacity={0.9}>
-                <View style={{width:110,height:110,position:'relative'}}>
-                  {l.media&&l.media[0]?<Image source={{uri:l.media[0].url}} style={{width:'100%',height:'100%'}} resizeMode="cover" />:<View style={{width:'100%',height:'100%',backgroundColor:C.border}} />}
-                  <TouchableOpacity style={{position:'absolute',top:6,right:6,width:28,height:28,borderRadius:14,backgroundColor:'rgba(0,0,0,0.3)',alignItems:'center',justifyContent:'center'}} onPress={function(){listingsModule.listingsStore.toggleFav(l.id, getToken());}}>
-                    <Ionicons name={l.isFavorite?'heart':'heart-outline'} size={18} color={l.isFavorite?'#FF4040':'rgba(255,255,255,0.9)'} />
-                  </TouchableOpacity>
+              </View>
+              <View style={{flex:1,padding:S.md,justifyContent:'center'}}>
+                <Text style={{fontSize:F.base,fontWeight:'800',color:C.text,marginBottom:4}} numberOfLines={1}>{l.title}</Text>
+                <View style={{flexDirection:'row',alignItems:'center',gap:4,marginBottom:S.sm}}>
+                  <Ionicons name="location" size={11} color={C.primary} />
+                  <Text style={{fontSize:F.xs,color:C.muted,flex:1}}>{l.neighborhood}, {l.city}</Text>
                 </View>
-                <View style={{flex:1,padding:S.md,justifyContent:'center'}}>
-                  <Text style={{fontSize:F.base,fontWeight:'800',color:C.text,marginBottom:4}} numberOfLines={1}>{l.title}</Text>
-                  <View style={{flexDirection:'row',alignItems:'center',gap:4,marginBottom:S.sm}}>
-                    <Ionicons name="location" size={11} color={C.primary} />
-                    <Text style={{fontSize:F.xs,color:C.muted,flex:1}}>{l.neighborhood}, {l.city}</Text>
-                  </View>
-                  <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
-                    <Text style={{fontSize:F.lg,fontWeight:'900',color:C.primary}}>{fmt(l.price)} <Text style={{fontSize:F.xs,fontWeight:'400',color:C.muted}}>F/mois</Text></Text>
-                    {l.isVerified&&<View style={{flexDirection:'row',alignItems:'center',backgroundColor:C.goldLt,borderRadius:R.full,paddingHorizontal:7,paddingVertical:3}}><Ionicons name="shield-checkmark" size={10} color={C.gold} /><Text style={{fontSize:F.xs,fontWeight:'700',color:C.gold}}> Verifie</Text></View>}
-                  </View>
-                  {l.latitude&&l.longitude&&(
-                    <TouchableOpacity onPress={function(){setViewMode('map');setSelected(l);}} style={{flexDirection:'row',alignItems:'center',gap:4,marginTop:4}}>
-                      <Ionicons name="map-outline" size={12} color={C.primary} />
-                      <Text style={{fontSize:F.xs,color:C.primary,fontWeight:'600'}}>Voir sur la carte</Text>
-                    </TouchableOpacity>
-                  )}
+                <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
+                  <Text style={{fontSize:F.lg,fontWeight:'900',color:C.primary}}>{fmt(l.price)} <Text style={{fontSize:F.xs,fontWeight:'400',color:C.muted}}>F/mois</Text></Text>
+                  {l.isVerified&&<View style={{flexDirection:'row',alignItems:'center',backgroundColor:C.goldLt,borderRadius:R.full,paddingHorizontal:7,paddingVertical:3}}><Ionicons name="shield-checkmark" size={10} color={C.gold} /><Text style={{fontSize:F.xs,fontWeight:'700',color:C.gold}}> Verifie</Text></View>}
                 </View>
-              </TouchableOpacity>
-            );
-          })}
-          <View style={{height:20}} />
-        </ScrollView>
-      )}
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+        <View style={{height:20}} />
+      </ScrollView>
 
-      {/* Modal filtres */}
       <Modal visible={modal} animationType="slide" transparent onRequestClose={function(){setModal(false);}}>
         <View style={{flex:1,backgroundColor:'rgba(0,0,0,0.5)',justifyContent:'flex-end'}}>
           <View style={{backgroundColor:'#fff',borderRadius:24,borderBottomLeftRadius:0,borderBottomRightRadius:0,padding:S.xl}}>
