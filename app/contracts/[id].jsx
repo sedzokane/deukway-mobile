@@ -32,13 +32,17 @@ export default function ContractDetail() {
   var signModalS = useState(false); var signModal = signModalS[0]; var setSignModal = signModalS[1];
   var rejectModalS = useState(false); var rejectModal = rejectModalS[0]; var setRejectModal = rejectModalS[1];
   var acceptedS = useState(false); var accepted = acceptedS[0]; var setAccepted = acceptedS[1];
+  var hasReviewS = useState(false); var hasReview = hasReviewS[0]; var setHasReview = hasReviewS[1];
 
   useEffect(function() {
     var token = getToken();
     api.get('/contracts/'+params.id, token).then(function(data) {
-      console.log('Contract:', data.status, 'User:', user?user.role:'none');
       setContract(data);
       setLoading(false);
+      // Vérifier si review existe
+      api.get('/reviews/contract/'+params.id, token).then(function(r) {
+        if (r && r.id) setHasReview(true);
+      }).catch(function(){});
     }).catch(function(err) {
       console.log('Error:', JSON.stringify(err));
       setLoading(false);
@@ -63,7 +67,6 @@ export default function ContractDetail() {
       }
     }).catch(function(err) {
       setSigning(false);
-      console.log('Sign error:', String(err));
       Toast.show({ type:'error', text1:'Erreur réseau', visibilityTime:2000 });
     });
   }
@@ -90,6 +93,12 @@ export default function ContractDetail() {
     if (!contract) return;
     var amount = contract.listing ? (contract.listing.deposit || contract.listing.price) : 0;
     router.push('/payment?amount='+amount+'&description=Caution - '+contract.listing.title);
+  }
+
+  function handleReview() {
+    var ownerName = contract.owner ? contract.owner.firstName+' '+contract.owner.lastName : '';
+    var listingTitle = contract.listing ? contract.listing.title : '';
+    router.push('/reviews/'+params.id+'?ownerName='+encodeURIComponent(ownerName)+'&listingTitle='+encodeURIComponent(listingTitle));
   }
 
   function handleDownload() {
@@ -250,7 +259,6 @@ export default function ContractDetail() {
             })}
 
             <View style={{height:0.5,backgroundColor:'#E0E0E0',marginVertical:S.xl}} />
-
             <Text style={{fontSize:F.sm,fontWeight:'900',color:'#333',textAlign:'center',marginBottom:S.xl,textTransform:'uppercase',letterSpacing:1}}>Signatures des parties</Text>
 
             <View style={{flexDirection:'row',gap:S.lg}}>
@@ -263,7 +271,6 @@ export default function ContractDetail() {
                 <Text style={{fontSize:F.xs,fontWeight:'800',color:'#333',marginTop:S.sm,textAlign:'center'}}>{contract.owner?contract.owner.firstName+' '+contract.owner.lastName:''}</Text>
                 <Text style={{fontSize:10,color:C.muted}}>Le {fmt(contract.createdAt)}</Text>
               </View>
-
               <View style={{flex:1,alignItems:'center'}}>
                 <Text style={{fontSize:F.xs,color:C.muted,marginBottom:S.sm,textAlign:'center'}}>Le Locataire</Text>
                 <View style={{width:'100%',height:80,borderRadius:8,borderWidth:1.5,borderStyle:'dashed',borderColor:isSigned?'#1B4F3A':isRejected?'#DC2626':'#F59E0B',backgroundColor:isSigned?'#F0FDF4':isRejected?'#FEE2E2':'#FFFBF0',alignItems:'center',justifyContent:'center'}}>
@@ -282,13 +289,13 @@ export default function ContractDetail() {
           </View>
         </View>
 
-        {/* Bouton télécharger */}
+        {/* Télécharger */}
         <TouchableOpacity onPress={handleDownload} style={{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:S.md,backgroundColor:'#fff',borderRadius:R.xl,padding:S.lg,marginBottom:S.md,borderWidth:1.5,borderColor:'#1B4F3A',elevation:2}}>
           <Ionicons name="download-outline" size={20} color="#1B4F3A" />
           <Text style={{fontSize:F.base,fontWeight:'700',color:'#1B4F3A'}}>Télécharger le contrat (PDF)</Text>
         </TouchableOpacity>
 
-        {/* Actions locataire */}
+        {/* Actions locataire PENDING */}
         {isTenant && isPending && (
           <View style={{gap:S.sm,marginBottom:S.lg}}>
             <TouchableOpacity onPress={function(){setAccepted(false);setSignModal(true);}} disabled={signing} activeOpacity={0.88} style={{borderRadius:R.xl,overflow:'hidden',opacity:signing?0.6:1}}>
@@ -303,14 +310,20 @@ export default function ContractDetail() {
           </View>
         )}
 
-        {/* Payer */}
+        {/* Actions locataire SIGNED */}
         {isTenant && isSigned && (
-          <TouchableOpacity onPress={handlePay} activeOpacity={0.88} style={{borderRadius:R.xl,overflow:'hidden',marginBottom:S.lg}}>
-            <LinearGradient colors={['#F0A830','#D4821A','#A85F0E']} start={{x:0,y:0}} end={{x:1,y:0}} style={{paddingVertical:16,alignItems:'center',flexDirection:'row',justifyContent:'center',gap:S.md}}>
-              <Ionicons name="card-outline" size={20} color="#fff" />
-              <Text style={{fontSize:F.md,fontWeight:'800',color:'#fff'}}>Payer la caution — {contract.listing?fmtPrice(contract.listing.deposit||contract.listing.price):0} F</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+          <View style={{gap:S.sm,marginBottom:S.lg}}>
+            <TouchableOpacity onPress={handlePay} activeOpacity={0.88} style={{borderRadius:R.xl,overflow:'hidden'}}>
+              <LinearGradient colors={['#F0A830','#D4821A','#A85F0E']} start={{x:0,y:0}} end={{x:1,y:0}} style={{paddingVertical:16,alignItems:'center',flexDirection:'row',justifyContent:'center',gap:S.md}}>
+                <Ionicons name="card-outline" size={20} color="#fff" />
+                <Text style={{fontSize:F.md,fontWeight:'800',color:'#fff'}}>Payer la caution — {contract.listing?fmtPrice(contract.listing.deposit||contract.listing.price):0} F</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleReview} style={{borderRadius:R.xl,padding:16,alignItems:'center',flexDirection:'row',justifyContent:'center',gap:S.md,backgroundColor:hasReview?'#F0FDF4':'#FFFBF0',borderWidth:1.5,borderColor:hasReview?'#059669':'#F59E0B'}}>
+              <Ionicons name={hasReview?'star':'star-outline'} size={20} color={hasReview?'#059669':'#D97706'} />
+              <Text style={{fontSize:F.base,fontWeight:'700',color:hasReview?'#059669':'#D97706'}}>{hasReview?'Avis déjà soumis':'Noter le propriétaire'}</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         <View style={{height:20}} />
@@ -320,9 +333,7 @@ export default function ContractDetail() {
       <Modal visible={signModal} transparent animationType="slide" onRequestClose={function(){setSignModal(false);}}>
         <View style={{flex:1,backgroundColor:'rgba(0,0,0,0.6)',justifyContent:'flex-end'}}>
           <View style={{backgroundColor:'#fff',borderTopLeftRadius:28,borderTopRightRadius:28,padding:S.xl}}>
-            {/* Handle */}
             <View style={{width:40,height:4,backgroundColor:'#E0E0E0',borderRadius:2,alignSelf:'center',marginBottom:S.xl}} />
-
             <View style={{alignItems:'center',marginBottom:S.xl}}>
               <View style={{width:64,height:64,borderRadius:32,backgroundColor:'#D1FAE5',alignItems:'center',justifyContent:'center',marginBottom:S.md}}>
                 <Ionicons name="document-text" size={32} color="#059669" />
@@ -330,8 +341,6 @@ export default function ContractDetail() {
               <Text style={{fontSize:20,fontWeight:'900',color:'#1B4F3A',textAlign:'center'}}>Signature du contrat</Text>
               <Text style={{fontSize:F.sm,color:C.muted,marginTop:6,textAlign:'center'}}>Vous êtes sur le point de signer légalement ce contrat de location</Text>
             </View>
-
-            {/* Récapitulatif */}
             <View style={{backgroundColor:'#F8FFF8',borderRadius:16,padding:S.lg,marginBottom:S.lg,borderWidth:1,borderColor:'#D1FAE5'}}>
               <Text style={{fontSize:F.xs,fontWeight:'900',color:'#059669',letterSpacing:1,marginBottom:S.md}}>RÉCAPITULATIF</Text>
               <View style={{flexDirection:'row',justifyContent:'space-between',marginBottom:8}}>
@@ -351,18 +360,12 @@ export default function ContractDetail() {
                 <Text style={{fontSize:F.sm,fontWeight:'700',color:C.text}}>{contract.owner?contract.owner.firstName+' '+contract.owner.lastName:'—'}</Text>
               </View>
             </View>
-
-            {/* Checkbox */}
             <TouchableOpacity onPress={function(){setAccepted(!accepted);}} style={{flexDirection:'row',alignItems:'flex-start',gap:S.md,marginBottom:S.xl}} activeOpacity={0.7}>
               <View style={{width:24,height:24,borderRadius:6,borderWidth:2,borderColor:accepted?'#059669':'#D1D5DB',backgroundColor:accepted?'#059669':'#fff',alignItems:'center',justifyContent:'center',marginTop:1,flexShrink:0}}>
                 {accepted&&<Ionicons name="checkmark" size={14} color="#fff" />}
               </View>
-              <Text style={{fontSize:F.sm,color:C.text,flex:1,lineHeight:20}}>
-                J'ai lu et j'accepte les termes et conditions de ce contrat de location. Je comprends que cette signature a valeur légale.
-              </Text>
+              <Text style={{fontSize:F.sm,color:C.text,flex:1,lineHeight:20}}>J'ai lu et j'accepte les termes et conditions de ce contrat de location. Je comprends que cette signature a valeur légale.</Text>
             </TouchableOpacity>
-
-            {/* Boutons */}
             <TouchableOpacity onPress={doSign} disabled={!accepted||signing} activeOpacity={0.88} style={{borderRadius:R.xl,overflow:'hidden',marginBottom:S.sm,opacity:(!accepted||signing)?0.4:1}}>
               <LinearGradient colors={['#059669','#047857']} start={{x:0,y:0}} end={{x:1,y:0}} style={{paddingVertical:16,alignItems:'center',flexDirection:'row',justifyContent:'center',gap:S.md}}>
                 <Ionicons name="create-outline" size={20} color="#fff" />
@@ -381,7 +384,6 @@ export default function ContractDetail() {
         <View style={{flex:1,backgroundColor:'rgba(0,0,0,0.6)',justifyContent:'flex-end'}}>
           <View style={{backgroundColor:'#fff',borderTopLeftRadius:28,borderTopRightRadius:28,padding:S.xl}}>
             <View style={{width:40,height:4,backgroundColor:'#E0E0E0',borderRadius:2,alignSelf:'center',marginBottom:S.xl}} />
-
             <View style={{alignItems:'center',marginBottom:S.xl}}>
               <View style={{width:64,height:64,borderRadius:32,backgroundColor:'#FEE2E2',alignItems:'center',justifyContent:'center',marginBottom:S.md}}>
                 <Ionicons name="close-circle" size={32} color="#DC2626" />
@@ -389,16 +391,12 @@ export default function ContractDetail() {
               <Text style={{fontSize:20,fontWeight:'900',color:'#DC2626',textAlign:'center'}}>Refuser le contrat</Text>
               <Text style={{fontSize:F.sm,color:C.muted,marginTop:6,textAlign:'center'}}>Cette action informera le propriétaire que vous refusez les conditions de location.</Text>
             </View>
-
             <View style={{backgroundColor:'#FEF2F2',borderRadius:16,padding:S.lg,marginBottom:S.xl,borderWidth:1,borderColor:'#FECACA'}}>
               <View style={{flexDirection:'row',alignItems:'flex-start',gap:S.sm}}>
                 <Ionicons name="warning-outline" size={18} color="#DC2626" style={{marginTop:1}} />
-                <Text style={{fontSize:F.sm,color:'#991B1B',flex:1,lineHeight:20}}>
-                  Une fois refusé, le propriétaire devra créer un nouveau contrat si vous souhaitez poursuivre la location.
-                </Text>
+                <Text style={{fontSize:F.sm,color:'#991B1B',flex:1,lineHeight:20}}>Une fois refusé, le propriétaire devra créer un nouveau contrat si vous souhaitez poursuivre la location.</Text>
               </View>
             </View>
-
             <TouchableOpacity onPress={doReject} disabled={rejecting} activeOpacity={0.88} style={{borderRadius:R.xl,backgroundColor:'#DC2626',paddingVertical:16,alignItems:'center',marginBottom:S.sm,opacity:rejecting?0.6:1}}>
               <Text style={{fontSize:F.md,fontWeight:'800',color:'#fff'}}>Confirmer le refus</Text>
             </TouchableOpacity>
