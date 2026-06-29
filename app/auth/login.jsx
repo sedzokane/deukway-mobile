@@ -3,17 +3,58 @@ import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, ScrollView,
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import { makeRedirectUri } from 'expo-auth-session';
 var authModule = require('../../src/store/auth');
+var apiModule = require('../../src/api/client');
+var api = apiModule.api;
 var hooks = require('../../src/store/hooks');
 var useAuth = hooks.useAuth;
 var t = require('../../src/theme');
 var C=t.C; var S=t.S; var R=t.R; var F=t.F;
+
+WebBrowser.maybeCompleteAuthSession();
+
+var GOOGLE_CLIENT_ID = '862858555487-4uh6j1v8jpho756srojuuatkum0s5q0d.apps.googleusercontent.com';
 
 export default function Login() {
   var auth = useAuth();
   var phoneS = useState(''); var phone = phoneS[0]; var setPhone = phoneS[1];
   var pwS = useState(''); var pw = pwS[0]; var setPw = pwS[1];
   var showS = useState(false); var show = showS[0]; var setShow = showS[1];
+  var googleLoadingS = useState(false); var googleLoading = googleLoadingS[0]; var setGoogleLoading = googleLoadingS[1];
+
+  var googleAuth = Google.useAuthRequest({
+    clientId: GOOGLE_CLIENT_ID,
+    redirectUri: makeRedirectUri({ scheme: 'deukway' }),
+    scopes: ['openid', 'profile', 'email'],
+  });
+  var request = googleAuth[0];
+  var response = googleAuth[1];
+  var promptAsync = googleAuth[2];
+
+  // Gérer la réponse Google
+  var React = require('react');
+  React.useEffect(function() {
+    if (response && response.type === 'success') {
+      var token = response.authentication ? response.authentication.accessToken : null;
+      if (token) {
+        setGoogleLoading(true);
+        api.post('/auth/google', { token: token }, null).then(function(data) {
+          setGoogleLoading(false);
+          if (data && data.token) {
+            authModule.authStore.setFromGoogle(data);
+          } else {
+            Alert.alert('Erreur', 'Connexion Google echouee');
+          }
+        }).catch(function() {
+          setGoogleLoading(false);
+          Alert.alert('Erreur', 'Connexion Google echouee');
+        });
+      }
+    }
+  }, [response]);
 
   function handlePhone(text) {
     var clean = text.replace(/[^0-9+]/g,'');
@@ -28,6 +69,10 @@ export default function Login() {
     });
   }
 
+  function handleGoogle() {
+    promptAsync();
+  }
+
   return (
     <KeyboardAvoidingView style={{flex:1}} behavior={Platform.OS==='ios'?'padding':'height'}>
       <View style={{flex:1,backgroundColor:'#000'}}>
@@ -39,6 +84,7 @@ export default function Login() {
             </TouchableOpacity>
             <Text style={{fontSize:34,fontWeight:'900',color:'#fff',marginBottom:S.sm}}>Bon retour 👋</Text>
             <Text style={{fontSize:F.base,color:'rgba(255,255,255,0.6)',marginBottom:S.xl2}}>Connectez-vous à votre espace Deukway</Text>
+
             <View style={{backgroundColor:'#fff',borderRadius:R.xl2,padding:S.xl,elevation:16}}>
               <Text style={st.label}>Téléphone</Text>
               <TextInput style={st.input} placeholder="+221770000000" placeholderTextColor={C.gray} value={phone} onChangeText={handlePhone} keyboardType="phone-pad" />
@@ -52,12 +98,27 @@ export default function Login() {
               <TouchableOpacity style={{alignItems:'flex-end',marginTop:S.sm,marginBottom:S.xl}}>
                 <Text style={{color:C.primary,fontSize:F.sm,fontWeight:'600'}}>Mot de passe oublié ?</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={submit} disabled={auth.isLoading} activeOpacity={0.88} style={{borderRadius:R.xl,overflow:'hidden',opacity:auth.isLoading?0.6:1}}>
+
+              <TouchableOpacity onPress={submit} disabled={auth.isLoading} activeOpacity={0.88} style={{borderRadius:R.xl,overflow:'hidden',opacity:auth.isLoading?0.6:1,marginBottom:S.lg}}>
                 <LinearGradient colors={['#F0A830','#D4821A','#A85F0E']} start={{x:0,y:0}} end={{x:1,y:0}} style={{paddingVertical:17,alignItems:'center'}}>
                   <Text style={{fontSize:F.md,fontWeight:'800',color:'#fff'}}>{auth.isLoading?'Connexion...':'Se connecter  →'}</Text>
                 </LinearGradient>
               </TouchableOpacity>
+
+              {/* Séparateur */}
+              <View style={{flexDirection:'row',alignItems:'center',gap:S.md,marginBottom:S.lg}}>
+                <View style={{flex:1,height:0.5,backgroundColor:C.border}} />
+                <Text style={{fontSize:F.xs,color:C.muted,fontWeight:'600'}}>OU</Text>
+                <View style={{flex:1,height:0.5,backgroundColor:C.border}} />
+              </View>
+
+              {/* Bouton Google */}
+              <TouchableOpacity onPress={handleGoogle} disabled={!request||googleLoading} activeOpacity={0.88} style={{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:S.md,borderRadius:R.xl,padding:16,borderWidth:1.5,borderColor:'#E0E0E0',backgroundColor:'#fff',opacity:(!request||googleLoading)?0.6:1}}>
+                <Text style={{fontSize:20}}>🇬</Text>
+                <Text style={{fontSize:F.base,fontWeight:'700',color:'#333'}}>{googleLoading?'Connexion...':'Continuer avec Google'}</Text>
+              </TouchableOpacity>
             </View>
+
             <TouchableOpacity onPress={function(){router.push('/auth/register');}} style={{alignItems:'center',marginTop:S.xl}}>
               <Text style={{color:'rgba(255,255,255,0.7)',fontSize:F.sm}}>Pas de compte ? <Text style={{color:C.primary,fontWeight:'800'}}>Créer un compte</Text></Text>
             </TouchableOpacity>

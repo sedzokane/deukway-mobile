@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 var hooks = require('../../src/store/hooks');
 var apiModule = require('../../src/api/client');
@@ -26,6 +27,7 @@ function fmt(d) {
 export default function OwnerVisits() {
   var visitsS = useState([]); var visits = visitsS[0]; var setVisits = visitsS[1];
   var refS = useState(false); var refreshing = refS[0]; var setRefreshing = refS[1];
+  var creatingS = useState(null); var creating = creatingS[0]; var setCreating = creatingS[1];
 
   function load() {
     api.get('/visits/owner', getToken()).then(function(data) {
@@ -50,6 +52,18 @@ export default function OwnerVisits() {
         text2: 'Le locataire sera notifie',
         visibilityTime: 2000,
       });
+    });
+  }
+
+  function handleCreateContract(visitId) {
+    setCreating(visitId);
+    api.post('/contracts/visit/'+visitId, {}, getToken()).then(function(contract) {
+      setCreating(null);
+      Toast.show({ type:'success', text1:'Contrat cree !', text2:'Le locataire peut maintenant le signer', visibilityTime:3000 });
+      router.push('/contracts/'+contract.id);
+    }).catch(function() {
+      setCreating(null);
+      Toast.show({ type:'error', text1:'Erreur', text2:'Impossible de creer le contrat', visibilityTime:2000 });
     });
   }
 
@@ -102,6 +116,12 @@ export default function OwnerVisits() {
                     <Text style={{fontSize:F.sm,fontWeight:'700',color:'#DC2626'}}>Refuser</Text>
                   </TouchableOpacity>
                 </View>
+              )}
+              {v.status==='CONFIRMED'&&(
+                <TouchableOpacity onPress={function(){handleCreateContract(v.id);}} disabled={creating===v.id} style={{flexDirection:'row',alignItems:'center',justifyContent:'center',gap:5,paddingVertical:10,borderRadius:R.lg,backgroundColor:C.ownerLt,marginTop:S.sm,opacity:creating===v.id?0.6:1}}>
+                  <Ionicons name="document-text-outline" size={16} color={C.owner} />
+                  <Text style={{fontSize:F.sm,fontWeight:'700',color:C.owner}}>{creating===v.id?'Creation...':'Creer un contrat'}</Text>
+                </TouchableOpacity>
               )}
             </View>
           );

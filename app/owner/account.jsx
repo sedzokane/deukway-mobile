@@ -27,14 +27,14 @@ var MENU = [
   {section:'Mes biens',items:[
     {icon:'home-outline',label:'Mes annonces',route:'/owner/listings'},
     {icon:'calendar-outline',label:'Mes visites',route:'/owner/visits'},
-    {icon:'document-text-outline',label:'Contrats signes',route:null},
+    {icon:'document-text-outline',label:'Contrats signes',route:'/contracts'},
     {icon:'card-outline',label:'Paiements recus',route:null},
     {icon:'stats-chart-outline',label:'Statistiques',route:null},
   ]},
   {section:'Support',items:[
     {icon:'help-circle-outline',label:'Aide & FAQ',route:null},
     {icon:'chatbubble-outline',label:'Nous contacter',route:null},
-    {icon:'star-outline',label:'Noter l application',route:null},
+    {icon:'star-outline',label:"Noter l'application",route:null},
   ]},
 ];
 
@@ -42,12 +42,16 @@ export default function Account() {
   var auth = useAuth(); var user = auth.user;
   var store = useListings();
   var visitsS = useState([]); var visits = visitsS[0]; var setVisits = visitsS[1];
+  var contractsS = useState([]); var contracts = contractsS[0]; var setContracts = contractsS[1];
 
   useEffect(function(){
     if (!user) return;
     listingsModule.listingsStore.fetchMyListings(getToken());
     api.get('/visits/owner', getToken()).then(function(data) {
       setVisits(Array.isArray(data) ? data : []);
+    }).catch(function(){});
+    api.get('/contracts', getToken()).then(function(data) {
+      setContracts(Array.isArray(data) ? data : []);
     }).catch(function(){});
   }, [user]);
 
@@ -106,7 +110,7 @@ export default function Account() {
           {[
             {val:String(myListings.length),label:'Annonces',route:'/owner/listings'},
             {val:String(visits.length),label:'Visites',route:'/owner/visits'},
-            {val:'0',label:'Contrats',route:null},
+            {val:String(contracts.length),label:'Contrats',route:'/contracts'},
           ].map(function(item,i) {
             return (
               <TouchableOpacity key={i} onPress={function(){ if(item.route) router.push(item.route); }} style={{flex:1,alignItems:'center',paddingVertical:S.lg,borderRightWidth:i<2?0.5:0,borderRightColor:C.border}} activeOpacity={item.route?0.7:1}>
@@ -126,11 +130,16 @@ export default function Account() {
                   {section.items.map(function(item,i) {
                     return (
                       <TouchableOpacity key={item.label} onPress={function(){handleMenuPress(item);}} style={{flexDirection:'row',alignItems:'center',gap:S.md,padding:S.lg,borderBottomWidth:i<section.items.length-1?0.5:0,borderBottomColor:C.border}} activeOpacity={0.7}>
-                        <View style={{width:36,height:36,borderRadius:18,backgroundColor:C.ownerLt,alignItems:'center',justifyContent:'center'}}>
-                          <Ionicons name={item.icon} size={18} color={C.owner} />
+                        <View style={{width:36,height:36,borderRadius:18,backgroundColor:item.route?C.ownerLt:'#F5F5F5',alignItems:'center',justifyContent:'center'}}>
+                          <Ionicons name={item.icon} size={18} color={item.route?C.owner:C.gray} />
                         </View>
-                        <Text style={{flex:1,fontSize:F.base,fontWeight:'500',color:C.text}}>{item.label}</Text>
-                        <Ionicons name={item.route?'chevron-forward':'lock-closed-outline'} size={16} color={item.route?C.gray:C.border} />
+                        <Text style={{flex:1,fontSize:F.base,fontWeight:'500',color:item.route?C.text:C.muted}}>{item.label}</Text>
+                        {item.route
+                          ? <Ionicons name="chevron-forward" size={16} color={C.gray} />
+                          : <View style={{backgroundColor:'#F0F0F0',borderRadius:R.full,paddingHorizontal:8,paddingVertical:3}}>
+                              <Text style={{fontSize:9,fontWeight:'700',color:C.muted}}>BIENTOT</Text>
+                            </View>
+                        }
                       </TouchableOpacity>
                     );
                   })}

@@ -19,7 +19,7 @@ var MENU = [
   {section:'Activite',items:[
     {icon:'heart-outline',label:'Mes favoris',route:'/favorites'},
     {icon:'calendar-outline',label:'Mes visites',route:'/tabs/visits'},
-    {icon:'document-text-outline',label:'Mes contrats',route:null},
+    {icon:'document-text-outline',label:'Mes contrats',route:'/contracts'},
     {icon:'card-outline',label:'Paiements',route:'/payment?amount=5000&description=Test paiement Deukway'},
   ]},
   {section:'Support',items:[

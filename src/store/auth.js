@@ -54,6 +54,19 @@ var authStore = {
     });
   },
 
+  setFromGoogle: function(data) {
+    var user = data.user;
+    var token = data.token;
+    return Promise.all([
+      AsyncStorage.setItem('dkw_user', JSON.stringify(user)),
+      AsyncStorage.setItem('dkw_token', token),
+    ]).then(function() {
+      setState({ user: user, token: token, isAuthenticated: true, isLoading: false });
+    }).catch(function() {
+      setState({ user: user, token: token, isAuthenticated: true, isLoading: false });
+    });
+  },
+
   login: function(phone, password) {
     setState({ isLoading: true });
     return api.post('/auth/login', { phone: phone, password: password })
