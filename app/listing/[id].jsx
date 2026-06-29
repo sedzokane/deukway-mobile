@@ -27,6 +27,18 @@ function fmt(p) { return new Intl.NumberFormat('fr-SN').format(p); }
 function addDays(d, n) { var r = new Date(d); r.setDate(r.getDate()+n); return r; }
 function fmtDay(d) { return d.toLocaleDateString('fr-SN',{weekday:'short',day:'numeric',month:'short'}); }
 function isSameDay(a, b) { return a.getDate()===b.getDate()&&a.getMonth()===b.getMonth()&&a.getFullYear()===b.getFullYear(); }
+function isValidUrl(url) { return url && (url.startsWith('http://') || url.startsWith('https://')); }
+
+function Stars({ rating, count }) {
+  return (
+    <View style={{flexDirection:'row',alignItems:'center',gap:4}}>
+      {[1,2,3,4,5].map(function(s) {
+        return <Ionicons key={s} name={s<=Math.round(rating)?'star':'star-outline'} size={14} color="#F59E0B" />;
+      })}
+      <Text style={{fontSize:F.xs,color:C.muted,marginLeft:2}}>{rating>0?rating.toFixed(1):''} {count>0?'('+count+' avis)':''}</Text>
+    </View>
+  );
+}
 
 export default function ListingDetail() {
   var params = useLocalSearchParams(); var id = params.id;
@@ -38,10 +50,20 @@ export default function ListingDetail() {
   var selectedHourS = useState('10:00'); var selectedHour = selectedHourS[0]; var setSelectedHour = selectedHourS[1];
   var msgS = useState(''); var msg = msgS[0]; var setMsg = msgS[1];
   var loadingS = useState(false); var loading = loadingS[0]; var setLoading = loadingS[1];
+  var reviewsS = useState({reviews:[],average:0,count:0}); var reviews = reviewsS[0]; var setReviews = reviewsS[1];
+  var showReviewsS = useState(false); var showReviews = showReviewsS[0]; var setShowReviews = showReviewsS[1];
 
   useEffect(function() {
     if(id) listingsModule.listingsStore.fetchOne(id, getToken());
   }, [id]);
+
+  useEffect(function() {
+    if(store.current && store.current.ownerId) {
+      api.get('/reviews/user/'+store.current.ownerId, getToken()).then(function(data) {
+        if (data && data.reviews) setReviews(data);
+      }).catch(function(){});
+    }
+  }, [store.current]);
 
   var l = store.current;
   var isOwner = user && user.role === 'OWNER';
@@ -57,14 +79,12 @@ export default function ListingDetail() {
   }
 
   var allPhotos = l.media && l.media.length>=4 ? l.media : (l.media||[]).concat(EXTRA.map(function(url,i){return {id:'e'+i,url:url,order:(l.media||[]).length+i};})).slice(0,5);
-
   var days = [0,1,2,3,4,5,6].map(function(i){ return addDays(new Date(), i+1); });
 
   function handleReserve() {
     var parts = selectedHour.split(':');
     var visitDate = new Date(selectedDay);
     visitDate.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0);
-
     setLoading(true);
     api.post('/visits', {
       listingId: l.id,
@@ -80,14 +100,14 @@ export default function ListingDetail() {
     });
   }
 
- function openMaps() {
-  var query = encodeURIComponent((l.address||l.neighborhood)+', '+l.city+', Senegal');
-  if (l.latitude && l.longitude) {
-    Linking.openURL('https://www.google.com/maps?q='+l.latitude+','+l.longitude);
-  } else {
-    Linking.openURL('https://www.google.com/maps/search/'+query);
+  function openMaps() {
+    var query = encodeURIComponent((l.address||l.neighborhood)+', '+l.city+', Senegal');
+    if (l.latitude && l.longitude) {
+      Linking.openURL('https://www.google.com/maps?q='+l.latitude+','+l.longitude);
+    } else {
+      Linking.openURL('https://www.google.com/maps/search/'+query);
+    }
   }
-}
 
   return (
     <View style={{flex:1,backgroundColor:'#fff'}}>
@@ -190,29 +210,67 @@ export default function ListingDetail() {
             <Ionicons name="chevron-forward" size={18} color={C.primary} />
           </TouchableOpacity>
 
-          <Text style={{fontSize:F.md,fontWeight:'800',color:C.text,marginBottom:S.md}}>Proprietaire</Text>
-          <View style={{flexDirection:'row',alignItems:'center',gap:S.md,backgroundColor:C.bg,borderRadius:R.xl,padding:S.md,marginBottom:S.xl}}>
-            {l.owner.avatar
-              ? <Image source={{uri:l.owner.avatar}} style={{width:48,height:48,borderRadius:24}} />
-              : <LinearGradient colors={['#F0A830','#D4821A']} style={{width:48,height:48,borderRadius:24,alignItems:'center',justifyContent:'center'}}>
-                  <Text style={{fontSize:16,fontWeight:'900',color:'#fff'}}>{l.owner.firstName[0]}{l.owner.lastName[0]}</Text>
-                </LinearGradient>
-            }
-            <View style={{flex:1}}>
-              <Text style={{fontSize:F.base,fontWeight:'700',color:C.text}}>{l.owner.firstName} {l.owner.lastName}</Text>
-              <Text style={{fontSize:F.xs,color:C.muted,marginTop:2}}>{l.viewCount} vues</Text>
+          {/* Propriétaire + Notes */}
+          <Text style={{fontSize:F.md,fontWeight:'800',color:C.text,marginBottom:S.md}}>Propriétaire</Text>
+          <View style={{backgroundColor:C.bg,borderRadius:R.xl,padding:S.md,marginBottom:S.md}}>
+            <View style={{flexDirection:'row',alignItems:'center',gap:S.md}}>
+              {isValidUrl(l.owner.avatar)
+                ? <Image source={{uri:l.owner.avatar}} style={{width:52,height:52,borderRadius:26}} />
+                : <LinearGradient colors={['#F0A830','#D4821A']} style={{width:52,height:52,borderRadius:26,alignItems:'center',justifyContent:'center'}}>
+                    <Text style={{fontSize:18,fontWeight:'900',color:'#fff'}}>{l.owner.firstName[0]}{l.owner.lastName[0]}</Text>
+                  </LinearGradient>
+              }
+              <View style={{flex:1}}>
+                <Text style={{fontSize:F.base,fontWeight:'700',color:C.text}}>{l.owner.firstName} {l.owner.lastName}</Text>
+                {reviews.count>0
+                  ? <Stars rating={reviews.average} count={reviews.count} />
+                  : <Text style={{fontSize:F.xs,color:C.muted,marginTop:2}}>Aucun avis pour le moment</Text>
+                }
+                <Text style={{fontSize:F.xs,color:C.muted,marginTop:2}}>{l.viewCount} vues</Text>
+              </View>
+              {!isOwner&&(
+                <View style={{flexDirection:'row',gap:8}}>
+                  <TouchableOpacity style={{width:40,height:40,borderRadius:20,backgroundColor:'#fff',borderWidth:0.5,borderColor:C.border,alignItems:'center',justifyContent:'center'}} onPress={function(){Linking.openURL('https://wa.me/'+l.owner.phone.replace(/[\s+]/g,''));}}>
+                    <Ionicons name="logo-whatsapp" size={18} color="#25D366" />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={{width:40,height:40,borderRadius:20,backgroundColor:'#fff',borderWidth:0.5,borderColor:C.border,alignItems:'center',justifyContent:'center'}} onPress={function(){Linking.openURL('tel:'+l.owner.phone);}}>
+                    <Ionicons name="call" size={18} color={C.primary} />
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
-            {!isOwner&&(
-              <>
-                <TouchableOpacity style={{width:40,height:40,borderRadius:20,backgroundColor:'#fff',borderWidth:0.5,borderColor:C.border,alignItems:'center',justifyContent:'center'}} onPress={function(){Linking.openURL('https://wa.me/'+l.owner.phone.replace(/[\s+]/g,''));}}>
-                  <Ionicons name="logo-whatsapp" size={18} color="#25D366" />
-                </TouchableOpacity>
-                <TouchableOpacity style={{width:40,height:40,borderRadius:20,backgroundColor:'#fff',borderWidth:0.5,borderColor:C.border,alignItems:'center',justifyContent:'center'}} onPress={function(){Linking.openURL('tel:'+l.owner.phone);}}>
-                  <Ionicons name="call" size={18} color={C.primary} />
-                </TouchableOpacity>
-              </>
-            )}
           </View>
+
+          {/* Avis */}
+          {reviews.count>0&&(
+            <View style={{marginBottom:S.xl}}>
+              <TouchableOpacity onPress={function(){setShowReviews(!showReviews);}} style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:S.md}}>
+                <Text style={{fontSize:F.base,fontWeight:'800',color:C.text}}>Avis ({reviews.count})</Text>
+                <Ionicons name={showReviews?'chevron-up':'chevron-down'} size={18} color={C.muted} />
+              </TouchableOpacity>
+              {showReviews&&reviews.reviews.slice(0,5).map(function(r) {
+                return (
+                  <View key={r.id} style={{backgroundColor:'#fff',borderRadius:R.xl,padding:S.lg,marginBottom:S.sm,elevation:2}}>
+                    <View style={{flexDirection:'row',alignItems:'center',gap:S.md,marginBottom:S.sm}}>
+                      {isValidUrl(r.reviewer&&r.reviewer.avatar)
+                        ? <Image source={{uri:r.reviewer.avatar}} style={{width:36,height:36,borderRadius:18}} />
+                        : <LinearGradient colors={['#F0A830','#D4821A']} style={{width:36,height:36,borderRadius:18,alignItems:'center',justifyContent:'center'}}>
+                            <Text style={{fontSize:13,fontWeight:'900',color:'#fff'}}>{r.reviewer?r.reviewer.firstName[0]:''}</Text>
+                          </LinearGradient>
+                      }
+                      <View style={{flex:1}}>
+                        <Text style={{fontSize:F.sm,fontWeight:'700',color:C.text}}>{r.reviewer?r.reviewer.firstName+' '+r.reviewer.lastName:'—'}</Text>
+                        <Stars rating={r.rating} count={0} />
+                      </View>
+                      <Text style={{fontSize:F.xs,color:C.gray}}>{new Date(r.createdAt).toLocaleDateString('fr-SN')}</Text>
+                    </View>
+                    {r.comment&&<Text style={{fontSize:F.sm,color:C.muted,lineHeight:18,fontStyle:'italic'}}>"{r.comment}"</Text>}
+                  </View>
+                );
+              })}
+            </View>
+          )}
+
           <View style={{height:100}} />
         </View>
       </ScrollView>
@@ -281,9 +339,7 @@ export default function ListingDetail() {
 
             <View style={{backgroundColor:C.primaryLt,borderRadius:R.lg,padding:S.md,marginBottom:S.lg,flexDirection:'row',alignItems:'center',gap:S.sm}}>
               <Ionicons name="calendar-outline" size={18} color={C.primary} />
-              <Text style={{fontSize:F.sm,color:C.primary,fontWeight:'600'}}>
-                {fmtDay(selectedDay)} a {selectedHour}
-              </Text>
+              <Text style={{fontSize:F.sm,color:C.primary,fontWeight:'600'}}>{fmtDay(selectedDay)} a {selectedHour}</Text>
             </View>
 
             <Text style={{fontSize:F.xs,fontWeight:'800',color:C.muted,letterSpacing:1,textTransform:'uppercase',marginBottom:S.sm}}>Message (optionnel)</Text>
