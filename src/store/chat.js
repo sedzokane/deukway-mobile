@@ -80,6 +80,13 @@ var chatStore = {
       setState({ onlineUsers: online });
     });
 
+    // Réponse directe à get_online_status
+    socket.on('get_online_status', function(data) {
+      var online = Object.assign({}, state.onlineUsers);
+      online[data.userId] = data.online;
+      setState({ onlineUsers: online });
+    });
+
     socket.on('user_typing', function(data) {
       var typing = Object.assign({}, state.typingUsers);
       typing[data.userId] = data.isTyping;
@@ -100,9 +107,11 @@ var chatStore = {
     if (!state.socket) return;
     if (state.connected) {
       state.socket.emit('join_conversation', { receiverId: receiverId });
+      state.socket.emit('get_online_status', { userId: receiverId });
     } else {
       state.socket.once('connect', function() {
         state.socket.emit('join_conversation', { receiverId: receiverId });
+        state.socket.emit('get_online_status', { userId: receiverId });
       });
     }
   },
