@@ -6,6 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 var hooks = require('../../src/store/hooks');
 var listingsModule = require('../../src/store/listings');
+var apiModule = require('../../src/api/client');
+var api = apiModule.api;
 var useAuth = hooks.useAuth;
 var useListings = hooks.useListings;
 var getToken = hooks.getToken;
@@ -33,7 +35,19 @@ var MINI = [
 ];
 var TYPE_LABEL = {STUDIO:'Studio',APARTMENT:'Appartement',ROOM:'Chambre',COLOCATION:'Colocation'};
 var TYPE_GRAD = {STUDIO:['#1B4F3A','#2D7A5F'],APARTMENT:['#1A2E4A','#243D61'],ROOM:['#4B0082','#7B2FBE'],COLOCATION:['#7A1B1B','#DC2626']};
+
 function fmt(p) { return new Intl.NumberFormat('fr-SN').format(p); }
+function isValidUrl(url) { return url && (url.startsWith('http://') || url.startsWith('https://')); }
+
+function StarRating({ rating }) {
+  if (!rating || rating === 0) return null;
+  return (
+    <View style={{flexDirection:'row',alignItems:'center',gap:2}}>
+      <Ionicons name="star" size={11} color="#F59E0B" />
+      <Text style={{fontSize:F.xs,fontWeight:'700',color:'#F59E0B'}}>{rating.toFixed(1)}</Text>
+    </View>
+  );
+}
 
 export default function Home() {
   var auth = useAuth(); var user = auth.user;
@@ -41,9 +55,28 @@ export default function Home() {
   var heroS = useState(0); var heroIdx = heroS[0]; var setHeroIdx = heroS[1];
   var catS = useState('all'); var cat = catS[0]; var setCat = catS[1];
   var refS = useState(false); var refreshing = refS[0]; var setRefreshing = refS[1];
+  var ratingsS = useState({}); var ratings = ratingsS[0]; var setRatings = ratingsS[1];
   var fade = useRef(new Animated.Value(1)).current;
 
   useEffect(function() { listingsModule.listingsStore.fetch(null, getToken()); }, []);
+
+  useEffect(function() {
+    if (items.length > 0) {
+      var ownerIds = [...new Set(items.map(function(l){ return l.ownerId; }))];
+      ownerIds.forEach(function(ownerId) {
+        api.get('/reviews/user/'+ownerId, getToken()).then(function(data) {
+          if (data && data.average) {
+            setRatings(function(prev) {
+              var next = Object.assign({}, prev);
+              next[ownerId] = data.average;
+              return next;
+            });
+          }
+        }).catch(function(){});
+      });
+    }
+  }, [items.length]);
+
   useEffect(function() {
     var timer = setInterval(function() {
       Animated.timing(fade,{toValue:0,duration:300,useNativeDriver:true}).start(function() {
@@ -59,12 +92,14 @@ export default function Home() {
 
   var heroItems = items.slice(0,3);
   var heroPhoto = heroItems[heroIdx]&&heroItems[heroIdx].media&&heroItems[heroIdx].media[0]
-    ? heroItems[heroIdx].media[0].url
-    : HERO_PHOTOS[heroIdx];
+    ? heroItems[heroIdx].media[0].url : HERO_PHOTOS[heroIdx];
   var heroLabel = heroItems[heroIdx] ? heroItems[heroIdx].title : '';
   var heroPrice = heroItems[heroIdx] ? fmt(heroItems[heroIdx].price)+' F/mois' : '';
   var heroId = heroItems[heroIdx] ? heroItems[heroIdx].id : null;
   var heroTag = HERO_TAGS[heroIdx];
+
+  var popular = items.filter(function(l){ return l.viewCount > 0; }).sort(function(a,b){ return b.viewCount - a.viewCount; }).slice(0,5);
+  var recent = items.slice(0,10);
 
   function onRefresh() {
     setRefreshing(true);
@@ -96,6 +131,8 @@ export default function Home() {
       </LinearGradient>
 
       <ScrollView showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[C.primary]} />}>
+
+        {/* Hero */}
         <View style={{height:220,position:'relative',marginHorizontal:S.lg,marginTop:S.lg,borderRadius:R.xl2,overflow:'hidden',elevation:14}}>
           <Animated.Image source={{uri:heroPhoto}} style={{width:'100%',height:'100%',opacity:fade}} resizeMode="cover" />
           <LinearGradient colors={['transparent','rgba(0,0,0,0.75)']} style={StyleSheet.absoluteFillObject} />
@@ -116,6 +153,7 @@ export default function Home() {
           </View>
         </View>
 
+        {/* Mini photos */}
         <View style={{flexDirection:'row',gap:5,paddingHorizontal:S.lg,marginTop:S.md,height:80}}>
           {MINI.map(function(uri,i){
             return (
@@ -127,6 +165,7 @@ export default function Home() {
           })}
         </View>
 
+        {/* Catégories */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{backgroundColor:'#fff',borderBottomWidth:0.5,borderBottomColor:C.border,marginTop:S.sm}} contentContainerStyle={{gap:8,paddingHorizontal:S.lg,paddingVertical:S.md}}>
           {CATS.map(function(c){
             return (
@@ -140,13 +179,49 @@ export default function Home() {
         </ScrollView>
 
         <View style={{paddingHorizontal:S.lg}}>
-          <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:S.md,marginTop:S.lg}}>
-            <Text style={{fontSize:F.lg,fontWeight:'800',color:C.text,letterSpacing:-0.2}}>Annonces recentes</Text>
-            <TouchableOpacity onPress={function(){router.push('/tabs/search');}}>
-              <Text style={{fontSize:F.sm,color:C.primary,fontWeight:'700'}}>Voir tout →</Text>
-            </TouchableOpacity>
-          </View>
 
+          {/* Annonces populaires */}
+          {popular.length>0&&(
+            <View style={{marginTop:S.lg,marginBottom:S.md}}>
+              <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:S.md}}>
+                <Text style={{fontSize:F.lg,fontWeight:'800',color:C.text,letterSpacing:-0.2}}>🔥 Populaires</Text>
+                <TouchableOpacity onPress={function(){router.push('/tabs/search');}}>
+                  <Text style={{fontSize:F.sm,color:C.primary,fontWeight:'700'}}>Voir tout →</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:S.md}}>
+                {popular.map(function(l){
+                  return (
+                    <TouchableOpacity key={l.id} onPress={function(){router.push('/listing/'+l.id);}} style={{width:180,backgroundColor:'#fff',borderRadius:R.xl,overflow:'hidden',elevation:4}} activeOpacity={0.9}>
+                      <View style={{height:120,position:'relative'}}>
+                        {l.media&&l.media[0]
+                          ? <Image source={{uri:l.media[0].url}} style={{width:'100%',height:'100%'}} resizeMode="cover" />
+                          : <LinearGradient colors={TYPE_GRAD[l.type]||['#333','#555']} style={{flex:1}} />
+                        }
+                        <LinearGradient colors={['transparent','rgba(0,0,0,0.5)']} style={StyleSheet.absoluteFillObject} />
+                        <View style={{position:'absolute',bottom:S.sm,left:S.sm}}>
+                          <Text style={{fontSize:F.sm,fontWeight:'900',color:'#fff'}}>{fmt(l.price)} F</Text>
+                        </View>
+                        <View style={{position:'absolute',top:S.sm,right:S.sm,flexDirection:'row',alignItems:'center',gap:3,backgroundColor:'rgba(0,0,0,0.4)',borderRadius:R.full,paddingHorizontal:6,paddingVertical:3}}>
+                          <Ionicons name="eye" size={10} color="#fff" />
+                          <Text style={{fontSize:9,color:'#fff',fontWeight:'700'}}>{l.viewCount}</Text>
+                        </View>
+                      </View>
+                      <View style={{padding:S.sm}}>
+                        <Text style={{fontSize:F.sm,fontWeight:'800',color:C.text,marginBottom:2}} numberOfLines={1}>{l.title}</Text>
+                        <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}>
+                          <Text style={{fontSize:F.xs,color:C.muted}} numberOfLines={1}>{l.neighborhood}</Text>
+                          <StarRating rating={ratings[l.ownerId]} />
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
+
+          {/* Badge vérifié */}
           <TouchableOpacity style={{flexDirection:'row',alignItems:'center',gap:S.md,backgroundColor:C.primaryLt,borderRadius:R.lg,padding:S.md,marginBottom:S.lg,borderWidth:0.5,borderColor:'rgba(212,130,26,0.2)'}} activeOpacity={0.88}>
             <Ionicons name="shield-checkmark" size={20} color={C.primary} />
             <View style={{flex:1}}>
@@ -156,8 +231,18 @@ export default function Home() {
             <Ionicons name="chevron-forward" size={18} color={C.primary} />
           </TouchableOpacity>
 
+          {/* Section titre */}
+          <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',marginBottom:S.md}}>
+            <Text style={{fontSize:F.lg,fontWeight:'800',color:C.text,letterSpacing:-0.2}}>Annonces recentes</Text>
+            <TouchableOpacity onPress={function(){router.push('/tabs/search');}}>
+              <Text style={{fontSize:F.sm,color:C.primary,fontWeight:'700'}}>Voir tout →</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Liste annonces */}
           {items.map(function(l){
             var grad = TYPE_GRAD[l.type]||['#333','#555'];
+            var ownerRating = ratings[l.ownerId];
             return (
               <TouchableOpacity key={l.id} style={{backgroundColor:'#fff',borderRadius:R.xl2,marginBottom:S.lg,overflow:'hidden',elevation:6}} onPress={function(){router.push('/listing/'+l.id);}} activeOpacity={0.92}>
                 <View style={{height:190,position:'relative'}}>
@@ -194,10 +279,14 @@ export default function Home() {
                   </View>
                   <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingTop:S.sm,borderTopWidth:0.5,borderTopColor:C.border}}>
                     <View style={{flexDirection:'row',alignItems:'center',gap:S.sm}}>
-                      <LinearGradient colors={['#F0A830','#D4821A']} style={{width:26,height:26,borderRadius:13,alignItems:'center',justifyContent:'center'}}>
-                        <Text style={{fontSize:10,fontWeight:'800',color:'#fff'}}>{l.owner.firstName[0]}{l.owner.lastName[0]}</Text>
-                      </LinearGradient>
+                      {isValidUrl(l.owner.avatar)
+                        ? <Image source={{uri:l.owner.avatar}} style={{width:26,height:26,borderRadius:13}} />
+                        : <LinearGradient colors={['#F0A830','#D4821A']} style={{width:26,height:26,borderRadius:13,alignItems:'center',justifyContent:'center'}}>
+                            <Text style={{fontSize:10,fontWeight:'800',color:'#fff'}}>{l.owner.firstName[0]}{l.owner.lastName[0]}</Text>
+                          </LinearGradient>
+                      }
                       <Text style={{fontSize:F.xs,fontWeight:'600',color:C.muted}}>{l.owner.firstName} {l.owner.lastName}</Text>
+                      {ownerRating&&<StarRating rating={ownerRating} />}
                     </View>
                     <View style={{flexDirection:'row',alignItems:'center',gap:3}}>
                       <Ionicons name="eye" size={12} color={C.gray} />
