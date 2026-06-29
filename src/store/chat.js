@@ -12,6 +12,8 @@ var state = {
   conversations: [],
   messages: [],
   currentUserId: null,
+  onlineUsers: {},
+  typingUsers: {},
 };
 
 var listeners = [];
@@ -49,16 +51,39 @@ var chatStore = {
     });
 
     socket.on('new_message', function(message) {
-      console.log('New message received:', message.id, 'type:', message.type);
       setState({ messages: state.messages.concat(message) });
     });
 
     socket.on('messages_read', function(data) {
       setState({
         messages: state.messages.map(function(m) {
-          return m.receiverId === data.userId ? Object.assign({}, m, { isRead: true }) : m;
+          return m.senderId === state.currentUserId ? Object.assign({}, m, { isRead: true }) : m;
         }),
       });
+    });
+
+    socket.on('user_online', function(data) {
+      var online = Object.assign({}, state.onlineUsers);
+      online[data.userId] = true;
+      setState({ onlineUsers: online });
+    });
+
+    socket.on('user_offline', function(data) {
+      var online = Object.assign({}, state.onlineUsers);
+      online[data.userId] = false;
+      setState({ onlineUsers: online });
+    });
+
+    socket.on('user_status', function(data) {
+      var online = Object.assign({}, state.onlineUsers);
+      online[data.userId] = data.online;
+      setState({ onlineUsers: online });
+    });
+
+    socket.on('user_typing', function(data) {
+      var typing = Object.assign({}, state.typingUsers);
+      typing[data.userId] = data.isTyping;
+      setState({ typingUsers: typing });
     });
 
     setState({ socket: socket, currentUserId: userId });
@@ -67,7 +92,7 @@ var chatStore = {
   disconnect: function() {
     if (state.socket) {
       state.socket.disconnect();
-      setState({ socket: null, connected: false, messages: [] });
+      setState({ socket: null, connected: false, messages: [], onlineUsers: {}, typingUsers: {} });
     }
   },
 
@@ -96,6 +121,20 @@ var chatStore = {
     if (state.socket) {
       state.socket.emit('mark_read', { senderId: senderId });
     }
+  },
+
+  sendTyping: function(receiverId, isTyping) {
+    if (state.socket) {
+      state.socket.emit('typing', { receiverId: receiverId, isTyping: isTyping });
+    }
+  },
+
+  isOnline: function(userId) {
+    return !!state.onlineUsers[userId];
+  },
+
+  isTyping: function(userId) {
+    return !!state.typingUsers[userId];
   },
 
   loadConversations: function(token) {

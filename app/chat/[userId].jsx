@@ -27,6 +27,43 @@ function uploadFile(file, token, onSuccess, onError) {
     .catch(onError);
 }
 
+function TypingIndicator() {
+  var dot1 = useRef(new (require('react-native').Animated.Value)(0)).current;
+  var dot2 = useRef(new (require('react-native').Animated.Value)(0)).current;
+  var dot3 = useRef(new (require('react-native').Animated.Value)(0)).current;
+  var Animated = require('react-native').Animated;
+
+  useEffect(function() {
+    function animate(dot, delay) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(dot, { toValue: -6, duration: 300, useNativeDriver: true }),
+          Animated.timing(dot, { toValue: 0, duration: 300, useNativeDriver: true }),
+        ])
+      ).start();
+    }
+    animate(dot1, 0);
+    animate(dot2, 150);
+    animate(dot3, 300);
+  }, []);
+
+  return (
+    <View style={{flexDirection:'row',alignItems:'center',paddingHorizontal:S.lg,paddingVertical:S.sm,gap:4}}>
+      <View style={{width:32,height:32,borderRadius:16,backgroundColor:C.primaryLt,alignItems:'center',justifyContent:'center',marginRight:S.sm}}>
+        <Ionicons name="ellipsis-horizontal" size={16} color={C.primary} />
+      </View>
+      <View style={{backgroundColor:'#fff',borderRadius:18,borderBottomLeftRadius:4,paddingHorizontal:S.md,paddingVertical:S.sm,flexDirection:'row',gap:4,alignItems:'center',elevation:2}}>
+        {[dot1,dot2,dot3].map(function(dot,i) {
+          return (
+            <Animated.View key={i} style={{width:6,height:6,borderRadius:3,backgroundColor:C.muted,transform:[{translateY:dot}]}} />
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 export default function ChatScreen() {
   var params = useLocalSearchParams(); var receiverId = params.userId;
   var auth = useAuth(); var user = auth.user;
@@ -35,7 +72,12 @@ export default function ChatScreen() {
   var otherUserS = useState(null); var otherUser = otherUserS[0]; var setOtherUser = otherUserS[1];
   var showAttachS = useState(false); var showAttach = showAttachS[0]; var setShowAttach = showAttachS[1];
   var uploadingS = useState(false); var uploading = uploadingS[0]; var setUploading = uploadingS[1];
+  var chatStateS = useState(chatModule.chatStore.getState()); var chatState = chatStateS[0]; var setChatState = chatStateS[1];
   var listRef = useRef(null);
+  var typingTimerRef = useRef(null);
+
+  var isOnline = chatState.onlineUsers[receiverId];
+  var isTyping = chatState.typingUsers[receiverId];
 
   useEffect(function() {
     if (!user) return;
@@ -53,8 +95,13 @@ export default function ChatScreen() {
     chatModule.chatStore.markRead(receiverId);
     var unsub = chatModule.chatStore.subscribe(function(state) {
       setMessages(state.messages.slice());
+      setChatState(Object.assign({}, state));
     });
-    return function() { unsub(); };
+    return function() {
+      unsub();
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      chatModule.chatStore.sendTyping(receiverId, false);
+    };
   }, [receiverId, user]);
 
   useEffect(function() {
@@ -63,10 +110,21 @@ export default function ChatScreen() {
         if (listRef.current) listRef.current.scrollToEnd({ animated: true });
       }, 100);
     }
-  }, [messages.length]);
+  }, [messages.length, isTyping]);
+
+  function handleTyping(text) {
+    setMsg(text);
+    chatModule.chatStore.sendTyping(receiverId, true);
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(function() {
+      chatModule.chatStore.sendTyping(receiverId, false);
+    }, 2000);
+  }
 
   function handleSend() {
     if (!msg.trim()) return;
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    chatModule.chatStore.sendTyping(receiverId, false);
     chatModule.chatStore.sendMessage(receiverId, msg.trim());
     setMsg('');
   }
@@ -97,18 +155,12 @@ export default function ChatScreen() {
         options.mediaTypes = ImagePicker.MediaType.images;
       } else if (mediaType === 'video') {
         options.mediaTypes = ImagePicker.MediaType.videos;
-      } else {
-        options.mediaTypes = [ImagePicker.MediaType.images, ImagePicker.MediaType.videos];
       }
       ImagePicker.launchImageLibraryAsync(options).then(function(result) {
         if (!result.canceled) {
           var asset = result.assets[0];
           var isVideo = asset.type === 'video';
-          var formFile = {
-            uri: asset.uri,
-            type: isVideo ? 'video/mp4' : 'image/jpeg',
-            name: isVideo ? 'video.mp4' : 'photo.jpg',
-          };
+          var formFile = { uri: asset.uri, type: isVideo ? 'video/mp4' : 'image/jpeg', name: isVideo ? 'video.mp4' : 'photo.jpg' };
           setUploading(true);
           uploadFile(formFile, token, function(url) {
             setUploading(false);
@@ -164,9 +216,7 @@ export default function ChatScreen() {
               </LinearGradient>
         )}
         <View style={{maxWidth:'75%'}}>
-          {isImage&&(
-            <Image source={{uri:m.content}} style={{width:200,height:150,borderRadius:12}} resizeMode="cover" />
-          )}
+          {isImage&&<Image source={{uri:m.content}} style={{width:200,height:150,borderRadius:12}} resizeMode="cover" />}
           {isVideo&&(
             <TouchableOpacity style={{width:200,height:150,borderRadius:12,backgroundColor:'#000',alignItems:'center',justifyContent:'center'}}>
               <Ionicons name="play-circle" size={48} color="#fff" />
@@ -186,7 +236,7 @@ export default function ChatScreen() {
           )}
           <Text style={{fontSize:F.xs,color:C.muted,marginTop:2,textAlign:isMine?'right':'left'}}>
             {new Date(m.createdAt).toLocaleTimeString('fr-SN',{hour:'2-digit',minute:'2-digit'})}
-            {isMine&&<Text> {m.isRead?'✓✓':'✓'}</Text>}
+            {isMine&&<Text style={{color:m.isRead?'#059669':C.muted}}> {m.isRead?'✓✓':'✓'}</Text>}
           </Text>
         </View>
       </View>
@@ -202,15 +252,22 @@ export default function ChatScreen() {
               <TouchableOpacity onPress={function(){router.back();}}>
                 <Ionicons name="arrow-back" size={24} color="#fff" />
               </TouchableOpacity>
-              {otherUser&&otherUser.avatar
-                ? <Image source={{uri:otherUser.avatar}} style={{width:38,height:38,borderRadius:19}} />
-                : <LinearGradient colors={['#F0A830','#D4821A']} style={{width:38,height:38,borderRadius:19,alignItems:'center',justifyContent:'center'}}>
-                    <Text style={{fontSize:14,fontWeight:'900',color:'#fff'}}>{otherUser?otherUser.firstName[0]:''}</Text>
-                  </LinearGradient>
-              }
+              <View style={{position:'relative'}}>
+                {otherUser&&otherUser.avatar
+                  ? <Image source={{uri:otherUser.avatar}} style={{width:38,height:38,borderRadius:19}} />
+                  : <LinearGradient colors={['#F0A830','#D4821A']} style={{width:38,height:38,borderRadius:19,alignItems:'center',justifyContent:'center'}}>
+                      <Text style={{fontSize:14,fontWeight:'900',color:'#fff'}}>{otherUser?otherUser.firstName[0]:''}</Text>
+                    </LinearGradient>
+                }
+                {isOnline&&(
+                  <View style={{position:'absolute',bottom:0,right:0,width:11,height:11,borderRadius:6,backgroundColor:'#22C55E',borderWidth:2,borderColor:'#C8791A'}} />
+                )}
+              </View>
               <View style={{flex:1}}>
                 <Text style={{fontSize:F.base,fontWeight:'800',color:'#fff'}}>{otherUser?otherUser.firstName+' '+otherUser.lastName:'...'}</Text>
-                <Text style={{fontSize:F.xs,color:'rgba(255,255,255,0.65)'}}>{chatModule.chatStore.getState().connected?'En ligne':'Hors ligne'}</Text>
+                <Text style={{fontSize:F.xs,color:'rgba(255,255,255,0.65)'}}>
+                  {isTyping ? '✍️ En train d\'écrire...' : isOnline ? '🟢 En ligne' : '⚫ Hors ligne'}
+                </Text>
               </View>
               <TouchableOpacity onPress={function(){Alert.alert('Appel video','Bientot disponible');}} style={{marginRight:S.sm}}>
                 <Ionicons name="videocam" size={22} color="#fff" />
@@ -235,6 +292,7 @@ export default function ChatScreen() {
           renderItem={renderMessage}
           contentContainerStyle={{paddingVertical:S.lg}}
           showsVerticalScrollIndicator={false}
+          ListFooterComponent={isTyping ? <TypingIndicator /> : null}
           ListEmptyComponent={
             <View style={{alignItems:'center',paddingVertical:60}}>
               <Text style={{fontSize:36,marginBottom:12}}>💬</Text>
@@ -283,7 +341,7 @@ export default function ChatScreen() {
                 placeholder="Ecrire un message..."
                 placeholderTextColor={C.gray}
                 value={msg}
-                onChangeText={setMsg}
+                onChangeText={handleTyping}
                 multiline
               />
             </View>
