@@ -25,6 +25,8 @@ var MENU = [
   {section:'Support',items:[
     {icon:'help-circle-outline',label:'Aide & FAQ',route:null},
     {icon:'chatbubble-outline',label:'Nous contacter',route:null},
+    {icon:'document-text-outline',label:"Conditions d'utilisation",route:'/legal/terms'},
+    {icon:'lock-closed-outline',label:'Politique de confidentialité',route:'/legal/privacy'},
     {icon:'star-outline',label:"Noter l'application",route:null},
   ]},
 ];
