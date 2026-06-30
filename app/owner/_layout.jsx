@@ -40,6 +40,7 @@ export default function OwnerLayout() {
       }} />
       <Tabs.Screen name="visits" options={{title:'Visites',tabBarIcon:function(p){return <Ionicons name={p.focused?'calendar':'calendar-outline'} size={22} color={p.color} />;} }} />
       <Tabs.Screen name="account" options={{title:'Compte',tabBarIcon:function(p){return <Ionicons name={p.focused?'person':'person-outline'} size={22} color={p.color} />;} }} />
+      <Tabs.Screen name="stats" options={{href:null}} />
     </Tabs>
   );
 }
