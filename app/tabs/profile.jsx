@@ -14,7 +14,7 @@ var MENU = [
   {section:'Mon compte',items:[
     {icon:'person-outline',label:'Informations personnelles',route:'/profile/edit'},
     {icon:'notifications-outline',label:'Notifications',route:'/notifications'},
-    {icon:'shield-checkmark-outline',label:'Securite',route:null},
+    {icon:'shield-checkmark-outline',label:'Securite',route:'/profile/security'},
   ]},
   {section:'Activite',items:[
     {icon:'heart-outline',label:'Mes favoris',route:'/favorites'},

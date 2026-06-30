@@ -22,7 +22,7 @@ var MENU = [
     {icon:'person-outline',label:'Informations personnelles',route:'/profile/edit'},
     {icon:'notifications-outline',label:'Notifications',route:'/notifications'},
     {icon:'chatbubbles-outline',label:'Messages',route:'/chat'},
-    {icon:'shield-checkmark-outline',label:'Securite',route:null},
+    {icon:'shield-checkmark-outline',label:'Securite',route:'/profile/security'},
   ]},
   {section:'Mes biens',items:[
     {icon:'home-outline',label:'Mes annonces',route:'/owner/listings'},
