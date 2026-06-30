@@ -28,12 +28,14 @@ var MENU = [
     {icon:'home-outline',label:'Mes annonces',route:'/owner/listings'},
     {icon:'calendar-outline',label:'Mes visites',route:'/owner/visits'},
     {icon:'document-text-outline',label:'Contrats signes',route:'/contracts'},
-    {icon:'card-outline',label:'Paiements recus',route:null},
+    {icon:'card-outline',label:'Paiements recus',route:'/payments/history'},
     {icon:'stats-chart-outline',label:'Statistiques',route:null},
   ]},
   {section:'Support',items:[
     {icon:'help-circle-outline',label:'Aide & FAQ',route:null},
     {icon:'chatbubble-outline',label:'Nous contacter',route:null},
+    {icon:'document-text-outline',label:"Conditions d'utilisation",route:'/legal/terms'},
+    {icon:'lock-closed-outline',label:'Politique de confidentialité',route:'/legal/privacy'},
     {icon:'star-outline',label:"Noter l'application",route:null},
   ]},
 ];
