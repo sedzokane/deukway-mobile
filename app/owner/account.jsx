@@ -29,7 +29,7 @@ var MENU = [
     {icon:'calendar-outline',label:'Mes visites',route:'/owner/visits'},
     {icon:'document-text-outline',label:'Contrats signes',route:'/contracts'},
     {icon:'card-outline',label:'Paiements recus',route:'/payments/history'},
-    {icon:'stats-chart-outline',label:'Statistiques',route:null},
+    {icon:'stats-chart-outline',label:'Statistiques',route:'/owner/stats'},
   ]},
   {section:'Support',items:[
     {icon:'help-circle-outline',label:'Aide & FAQ',route:'/legal/faq'},
