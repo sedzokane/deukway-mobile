@@ -40,7 +40,19 @@ var authStore = {
       if (raw && token) {
         try {
           var user = JSON.parse(raw);
+          // Nettoyer avatar local
+          if (user.avatar && !user.avatar.startsWith('http')) {
+            user.avatar = null;
+          }
           setState({ user: user, token: token, isAuthenticated: true });
+          // Rafraîchir depuis le serveur pour avoir l'avatar Cloudinary
+          api.get('/auth/me', token).then(function(me) {
+            if (me && me.id) {
+              var fresh = Object.assign({}, user, me);
+              AsyncStorage.setItem('dkw_user', JSON.stringify(fresh)).catch(function(){});
+              setState({ user: fresh });
+            }
+          }).catch(function(){});
         } catch(e) {}
       }
     }).catch(function() {});
