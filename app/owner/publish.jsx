@@ -119,6 +119,10 @@ export default function Publish() {
     if (!title) { Toast.show({type:'error',text1:'Requis',text2:'Le titre est obligatoire',visibilityTime:2000}); return; }
     if (!price) { Toast.show({type:'error',text1:'Requis',text2:'Le prix est obligatoire',visibilityTime:2000}); return; }
     if (!neigh) { Toast.show({type:'error',text1:'Requis',text2:'Le quartier est obligatoire',visibilityTime:2000}); return; }
+    if (photos.length === 0) {
+      Toast.show({type:'error',text1:'Photos requises',text2:'Ajoutez au moins une photo du bien',visibilityTime:2500});
+      return;
+    }
 
     setLoading(true);
 
@@ -139,33 +143,28 @@ export default function Publish() {
     var token = getToken();
 
     api.post('/listings', data, token).then(function(listing) {
-      console.log('LISTING:', JSON.stringify(listing));
       if (!listing || !listing.id) {
         throw new Error('Listing non cree: ' + JSON.stringify(listing));
       }
-      if (photos.length > 0) {
-        var formData = new FormData();
-        photoFiles.forEach(function(f, i) {
-          if (f.uri) {
-            formData.append('files', { uri: f.uri, type: 'image/jpeg', name: 'photo'+i+'.jpg' });
-          } else {
-            formData.append('files', f);
-          }
-        });
-        return fetch(BASE_URL + '/media/listings/' + listing.id, {
-          method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + token, 'ngrok-skip-browser-warning': 'true' },
-          body: formData,
-        }).then(function() { return listing; });
-      }
-      return listing;
+      var formData = new FormData();
+      photoFiles.forEach(function(f, i) {
+        if (f.uri) {
+          formData.append('files', { uri: f.uri, type: 'image/jpeg', name: 'photo'+i+'.jpg' });
+        } else {
+          formData.append('files', f);
+        }
+      });
+      return fetch(BASE_URL + '/media/listings/' + listing.id, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'ngrok-skip-browser-warning': 'true' },
+        body: formData,
+      }).then(function() { return listing; });
     }).then(function() {
       setLoading(false);
       Toast.show({ type:'success', text1:'Annonce publiee !', text2:'Votre annonce est en ligne', visibilityTime:2000 });
       setTimeout(function() { router.push('/owner/listings'); }, 2000);
     }).catch(function(err) {
       setLoading(false);
-      console.log('ERREUR publication:', String(err));
       Toast.show({ type:'error', text1:'Erreur', text2:String(err), visibilityTime:4000 });
     });
   }
@@ -181,7 +180,14 @@ export default function Publish() {
         </LinearGradient>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{padding:S.lg}} keyboardShouldPersistTaps="handled">
-          <Text style={st.section}>Photos du bien</Text>
+
+          <Text style={st.section}>Photos du bien *</Text>
+          {photos.length === 0 && (
+            <View style={{backgroundColor:'#FEF3C7',borderRadius:R.lg,padding:S.md,marginBottom:S.md,flexDirection:'row',alignItems:'center',gap:S.sm,borderWidth:1,borderColor:'#FDE68A'}}>
+              <Ionicons name="warning-outline" size={18} color="#D97706" />
+              <Text style={{fontSize:F.xs,color:'#D97706',fontWeight:'600',flex:1}}>Au moins une photo est obligatoire</Text>
+            </View>
+          )}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginBottom:S.xl}}>
             <View style={{flexDirection:'row',gap:S.sm}}>
               {photos.map(function(uri,i){
@@ -195,9 +201,9 @@ export default function Publish() {
                   </View>
                 );
               })}
-              <TouchableOpacity onPress={pickPhotos} style={{width:100,height:100,borderRadius:R.lg,backgroundColor:C.bg,borderWidth:2,borderColor:C.border,borderStyle:'dashed',alignItems:'center',justifyContent:'center',gap:4}}>
-                <Ionicons name="camera" size={28} color={C.gray} />
-                <Text style={{fontSize:F.xs,color:C.gray}}>Ajouter</Text>
+              <TouchableOpacity onPress={pickPhotos} style={{width:100,height:100,borderRadius:R.lg,backgroundColor:C.bg,borderWidth:2,borderColor:photos.length===0?'#D97706':C.border,borderStyle:'dashed',alignItems:'center',justifyContent:'center',gap:4}}>
+                <Ionicons name="camera" size={28} color={photos.length===0?'#D97706':C.gray} />
+                <Text style={{fontSize:F.xs,color:photos.length===0?'#D97706':C.gray}}>Ajouter</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>

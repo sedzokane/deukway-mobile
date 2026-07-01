@@ -15,12 +15,6 @@ var t = require('../../src/theme');
 var C=t.C; var S=t.S; var R=t.R; var F=t.F;
 var W = Dimensions.get('window').width;
 
-var EXTRA = [
-  'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=800',
-  'https://images.unsplash.com/photo-1484154218962-a197022b5858?w=800',
-  'https://images.unsplash.com/photo-1536376072261-38c75010e6c9?w=800',
-];
-
 var HOURS = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00'];
 
 function fmt(p) { return new Intl.NumberFormat('fr-SN').format(p); }
@@ -78,7 +72,7 @@ export default function ListingDetail() {
     );
   }
 
-  var allPhotos = l.media && l.media.length>=4 ? l.media : (l.media||[]).concat(EXTRA.map(function(url,i){return {id:'e'+i,url:url,order:(l.media||[]).length+i};})).slice(0,5);
+  var allPhotos = l.media && l.media.length > 0 ? l.media : [];
   var days = [0,1,2,3,4,5,6].map(function(i){ return addDays(new Date(), i+1); });
 
   function handleReserve() {
@@ -128,30 +122,40 @@ export default function ListingDetail() {
       </SafeAreaView>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={{height:280,position:'relative'}}>
-          <Image source={{uri:allPhotos[imgIdx]?allPhotos[imgIdx].url:''}} style={{width:W,height:280}} resizeMode="cover" />
-          <LinearGradient colors={['transparent','rgba(0,0,0,0.55)']} style={StyleSheet.absoluteFillObject} />
-          {l.isVerified&&(
-            <View style={{position:'absolute',bottom:S.md,left:S.lg,flexDirection:'row',alignItems:'center',backgroundColor:'rgba(201,150,58,0.92)',borderRadius:R.sm,paddingHorizontal:10,paddingVertical:4}}>
-              <Ionicons name="shield-checkmark" size={12} color="#fff" />
-              <Text style={{fontSize:F.xs,fontWeight:'700',color:'#fff'}}> Verifie</Text>
+        {allPhotos.length > 0 ? (
+          <>
+            <View style={{height:280,position:'relative'}}>
+              <Image source={{uri:allPhotos[imgIdx]?allPhotos[imgIdx].url:''}} style={{width:W,height:280}} resizeMode="cover" />
+              <LinearGradient colors={['transparent','rgba(0,0,0,0.55)']} style={StyleSheet.absoluteFillObject} />
+              {l.isVerified&&(
+                <View style={{position:'absolute',bottom:S.md,left:S.lg,flexDirection:'row',alignItems:'center',backgroundColor:'rgba(201,150,58,0.92)',borderRadius:R.sm,paddingHorizontal:10,paddingVertical:4}}>
+                  <Ionicons name="shield-checkmark" size={12} color="#fff" />
+                  <Text style={{fontSize:F.xs,fontWeight:'700',color:'#fff'}}> Verifie</Text>
+                </View>
+              )}
+              <View style={{position:'absolute',bottom:S.md,right:S.lg,flexDirection:'row',alignItems:'center',backgroundColor:'rgba(0,0,0,0.45)',borderRadius:R.md,paddingHorizontal:8,paddingVertical:3}}>
+                <Ionicons name="camera" size={12} color="#fff" />
+                <Text style={{fontSize:F.xs,color:'#fff'}}> {imgIdx+1}/{allPhotos.length}</Text>
+              </View>
             </View>
-          )}
-          <View style={{position:'absolute',bottom:S.md,right:S.lg,flexDirection:'row',alignItems:'center',backgroundColor:'rgba(0,0,0,0.45)',borderRadius:R.md,paddingHorizontal:8,paddingVertical:3}}>
-            <Ionicons name="camera" size={12} color="#fff" />
-            <Text style={{fontSize:F.xs,color:'#fff'}}> {imgIdx+1}/{allPhotos.length}</Text>
+            {allPhotos.length > 1 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{backgroundColor:'#fff'}} contentContainerStyle={{gap:4,padding:8,paddingHorizontal:S.lg}}>
+                {allPhotos.map(function(p,i){
+                  return (
+                    <TouchableOpacity key={p.id} onPress={function(){setImgIdx(i);}} style={{width:64,height:46,borderRadius:8,overflow:'hidden',borderWidth:2,borderColor:imgIdx===i?C.primary:'transparent'}}>
+                      <Image source={{uri:p.url}} style={{width:'100%',height:'100%'}} resizeMode="cover" />
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            )}
+          </>
+        ) : (
+          <View style={{height:280,backgroundColor:C.border,alignItems:'center',justifyContent:'center'}}>
+            <Ionicons name="image-outline" size={48} color={C.gray} />
+            <Text style={{fontSize:F.sm,color:C.muted,marginTop:8}}>Aucune photo disponible</Text>
           </View>
-        </View>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{backgroundColor:'#fff'}} contentContainerStyle={{gap:4,padding:8,paddingHorizontal:S.lg}}>
-          {allPhotos.map(function(p,i){
-            return (
-              <TouchableOpacity key={p.id} onPress={function(){setImgIdx(i);}} style={{width:64,height:46,borderRadius:8,overflow:'hidden',borderWidth:2,borderColor:imgIdx===i?C.primary:'transparent'}}>
-                <Image source={{uri:p.url}} style={{width:'100%',height:'100%'}} resizeMode="cover" />
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+        )}
 
         <View style={{padding:S.lg}}>
           <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'flex-start',marginBottom:S.md}}>
@@ -210,7 +214,6 @@ export default function ListingDetail() {
             <Ionicons name="chevron-forward" size={18} color={C.primary} />
           </TouchableOpacity>
 
-          {/* Propriétaire + Notes */}
           <Text style={{fontSize:F.md,fontWeight:'800',color:C.text,marginBottom:S.md}}>Propriétaire</Text>
           <View style={{backgroundColor:C.bg,borderRadius:R.xl,padding:S.md,marginBottom:S.md}}>
             <View style={{flexDirection:'row',alignItems:'center',gap:S.md}}>
@@ -241,7 +244,6 @@ export default function ListingDetail() {
             </View>
           </View>
 
-          {/* Avis */}
           {reviews.count>0&&(
             <View style={{marginBottom:S.xl}}>
               <TouchableOpacity onPress={function(){setShowReviews(!showReviews);}} style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginBottom:S.md}}>
